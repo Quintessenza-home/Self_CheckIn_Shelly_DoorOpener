@@ -31,7 +31,7 @@ export async function onRequestGet(context) {
           <button type="submit" style="width:100%; padding:0.75rem; font-size:1rem;
                    font-weight:600; color:white; background:#16a34a; border:none;
                    border-radius:8px; cursor:pointer;">
-            Riprova
+            Apri porta
           </button>
         </form>
         <a href="/" style="display:inline-block; margin-top:1rem; color:#71717a;
@@ -63,7 +63,8 @@ export async function onRequestGet(context) {
         </div>
       </body>
       </html>`,
-      { headers: { "Content-Type": "text/html;charset=UTF-8" }, status: showForm ? 403 : 200 }
+      // Ritorna sempre status 200 per evitare che il browser blocchi i rinvii del form di errore
+      { headers: { "Content-Type": "text/html;charset=UTF-8" }, status: 200 }
     );
   };
 
@@ -72,12 +73,12 @@ export async function onRequestGet(context) {
     return buildPage("Inserisci il PIN per aprire", "#dc2626", true);
   }
 
-  // 2. Controllo se il PIN è sbagliato (Mostra la scritta rossa + la casella di testo sotto!)
+  // 2. Controllo se il PIN è sbagliato
   if (pin !== VALID_PIN) {
     return buildPage("PIN errato ❌", "#dc2626", true);
   }
 
-  // 3. Se il PIN è corretto, esegue l'invio allo Shelly
+  // 3. Se il PIN è corretto, invio allo Shelly
   try {
     const shellyResponse = await fetch(
       `https://${SHELLY_SERVER}/v2/devices/api/set/switch?auth_key=${SHELLY_AUTH_KEY}`,
