@@ -1,15 +1,12 @@
 // functions/apri.js
 // Endpoint pubblico: https://tuoprogetto.pages.dev/apri?pin=1234
-
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const pin = url.searchParams.get("pin");
 
-  // Variabili impostate su Cloudflare Pages > Settings > Environment variables
-  // VALID_PIN, SHELLY_SERVER, SHELLY_AUTH_KEY, SHELLY_DEVICE_ID
   const VALID_PIN = env.VALID_PIN;
-  const SHELLY_SERVER = env.SHELLY_SERVER;       // es: shelly-103-eu.shelly.cloud
+  const SHELLY_SERVER = env.SHELLY_SERVER;
   const SHELLY_AUTH_KEY = env.SHELLY_AUTH_KEY;
   const SHELLY_DEVICE_ID = env.SHELLY_DEVICE_ID;
 
@@ -46,28 +43,28 @@ export async function onRequestGet(context) {
     return htmlResponse("PIN errato ❌", false);
   }
 
-try {
-  const shellyResponse = await fetch(
-    `https://${SHELLY_SERVER}/v2/devices/api/set/switch?auth_key=${SHELLY_AUTH_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: SHELLY_DEVICE_ID,
-        channel: 0,
-        on: true,
-        toggle_after: 5
-      })
+  try {
+    const shellyResponse = await fetch(
+      `https://${SHELLY_SERVER}/v2/devices/api/set/switch?auth_key=${SHELLY_AUTH_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: SHELLY_DEVICE_ID,
+          channel: 0,
+          on: true,
+          toggle_after: 5
+        })
+      }
+    );
+
+    if (shellyResponse.ok) {
+      return htmlResponse("Porta aperta ✅", true);
+    } else {
+      const errorText = await shellyResponse.text();
+      return htmlResponse("Errore: " + errorText, false);
     }
-  );
-
-  if (shellyResponse.ok) {
-    return htmlResponse("Porta aperta ✅", true);
-  } else {
-    const errorText = await shellyResponse.text();
-    return htmlResponse("Errore: " + errorText, false);
+  } catch (err) {
+    return htmlResponse("Errore: " + err.message, false);
   }
-} catch (err) {
-  return htmlResponse("Errore: " + err.message, false);
-}
-
+} // <-- questa chiude onRequestGet
