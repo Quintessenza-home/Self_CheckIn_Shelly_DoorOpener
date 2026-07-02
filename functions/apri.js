@@ -8,10 +8,10 @@ export async function onRequestGet(context) {
 
   // Variabili impostate su Cloudflare Pages > Settings > Environment variables
   // VALID_PIN, SHELLY_SERVER, SHELLY_AUTH_KEY, SHELLY_DEVICE_ID
-  const VALID_PIN = env.1407;
-  const SHELLY_SERVER = env.https://shelly-209-eu.shelly.cloud;       // es: shelly-103-eu.shelly.cloud
-  const SHELLY_AUTH_KEY = env.MzgyZjg4dWlk77F691A7BEE97A7BE12CC22373DB911915505BE797AE19AFED3868514EEB47F7E30CDC7B6FCCFD10;
-  const SHELLY_DEVICE_ID = env.78ee4cc4a9d0;
+  const VALID_PIN = env.VALID_PIN;
+  const SHELLY_SERVER = env.SHELLY_SERVER;       // es: shelly-103-eu.shelly.cloud
+  const SHELLY_AUTH_KEY = env.SHELLY_AUTH_KEY;
+  const SHELLY_DEVICE_ID = env.SHELLY_DEVICE_ID;
 
   function htmlResponse(message, ok) {
     const color = ok ? "#16a34a" : "#dc2626";
