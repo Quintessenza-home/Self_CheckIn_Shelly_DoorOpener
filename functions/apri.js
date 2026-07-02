@@ -56,19 +56,17 @@ export async function onRequestGet(context) {
           id: SHELLY_DEVICE_ID,
           channel: 0,
           on: true,
-          toggle_after: 2 // la porta si "sblocca" per 2 secondi poi torna off in automatico
+          toggle_after: 5 // la porta si "sblocca" per 2 secondi poi torna off in automatico
         })
       }
     );
 
-    const data = await shellyResponse.json();
-
-    if (data.isok) {
-      return htmlResponse("Porta aperta ✅", true);
-    } else {
-      return htmlResponse("Errore nell'apertura, riprova", false);
-    }
-  } catch (err) {
-    return htmlResponse("Errore di comunicazione con lo Shelly", false);
+if (shellyResponse.ok) {
+  return htmlResponse("Porta aperta ✅", true);
+} else {
+  const errorText = await shellyResponse.text();
+  return htmlResponse("Errore: " + errorText, false);
+}
   }
 }
+
