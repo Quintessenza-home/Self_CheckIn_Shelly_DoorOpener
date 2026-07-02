@@ -4,15 +4,15 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const pin = url.searchParams.get("pin");
- 
+
   const VALID_PIN = env.VALID_PIN;
   const SHELLY_SERVER = env.SHELLY_SERVER;
   const SHELLY_AUTH_KEY = env.SHELLY_AUTH_KEY;
   const SHELLY_DEVICE_ID = env.SHELLY_DEVICE_ID;
- 
+
   function htmlResponse(message, ok) {
     const color = ok ? "#16a34a" : "#dc2626";
- 
+
     // Se è andato tutto bene, mostriamo solo il messaggio di successo.
     // Se c'è stato un errore (PIN sbagliato, mancante, o problema tecnico),
     // mostriamo anche un campo per riprovare subito e un link per tornare alla home.
@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
           ← Torna alla home
         </a>
       `;
- 
+
     return new Response(
       `<!DOCTYPE html>
       <html lang="it">
@@ -70,15 +70,15 @@ export async function onRequestGet(context) {
       { headers: { "Content-Type": "text/html;charset=UTF-8" }, status: ok ? 200 : 403 }
     );
   }
- 
+
   if (!pin) {
     return htmlResponse("Inserisci il PIN per aprire", false);
   }
- 
+
   if (pin !== VALID_PIN) {
     return htmlResponse("PIN errato ❌", false);
   }
- 
+
   try {
     const shellyResponse = await fetch(
       `https://${SHELLY_SERVER}/v2/devices/api/set/switch?auth_key=${SHELLY_AUTH_KEY}`,
@@ -93,7 +93,7 @@ export async function onRequestGet(context) {
         })
       }
     );
- 
+
     if (shellyResponse.ok) {
       return htmlResponse("Porta aperta ✅", true);
     } else {
