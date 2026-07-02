@@ -10,14 +10,10 @@ export async function onRequestGet(context) {
   const SHELLY_AUTH_KEY = env.SHELLY_AUTH_KEY;
   const SHELLY_DEVICE_ID = env.SHELLY_DEVICE_ID;
 
-  // 1. DEFINIAMO SUBITO LA FUNZIONE HTML
-  function htmlResponse(message, ok) {
-    const color = ok ? "#16a34a" : "#dc2626";
-
-    // Se OK è false, iniettiamo il form di riprova
-    const retrySection = ok
-      ? ""
-      : `
+  // Struttura HTML base riutilizzabile
+  const buildPage = (message, color, showForm = false) => {
+    const retrySection = showForm 
+      ? `
         <form action="/apri" method="GET" style="margin-top:1.5rem;">
           <input
             type="tel"
@@ -27,7 +23,7 @@ export async function onRequestGet(context) {
             maxlength="6"
             autofocus
             required
-            placeholder="Reinserisci PIN"
+            placeholder="Inserisci PIN"
             style="width:100%; box-sizing:border-box; padding:0.75rem; font-size:1.3rem;
                    text-align:center; letter-spacing:0.2rem; border:1px solid #d4d4d8;
                    border-radius:8px; margin-bottom:0.75rem;"
@@ -42,7 +38,8 @@ export async function onRequestGet(context) {
                    font-size:0.9rem; text-decoration:none;">
           ← Torna alla home
         </a>
-      `;
+      `
+      : "";
 
     return new Response(
       `<!DOCTYPE html>
@@ -66,19 +63,21 @@ export async function onRequestGet(context) {
         </div>
       </body>
       </html>`,
-      { headers: { "Content-Type": "text/html;charset=UTF-8" }, status: ok ? 200 : 403 }
+      { headers: { "Content-Type": "text/html;charset=UTF-8" }, status: showForm ? 403 : 200 }
     );
-  }
+  };
 
-  // 2. ORA FACCIAMO I CONTROLLI (La funzione htmlResponse adesso è già pronta e non fallirà)
+  // 1. Controllo se il PIN manca
   if (!pin) {
-    return htmlResponse("Inserisci il PIN per aprire", false);
+    return buildPage("Inserisci il PIN per aprire", "#dc2626", true);
   }
 
+  // 2. Controllo se il PIN è sbagliato (Mostra la scritta rossa + la casella di testo sotto!)
   if (pin !== VALID_PIN) {
-    return htmlResponse("PIN errato ❌", false);
+    return buildPage("PIN errato ❌", "#dc2626", true);
   }
 
+  // 3. Se il PIN è corretto, esegue l'invio allo Shelly
   try {
     const shellyResponse = await fetch(
       `https://${SHELLY_SERVER}/v2/devices/api/set/switch?auth_key=${SHELLY_AUTH_KEY}`,
@@ -95,12 +94,12 @@ export async function onRequestGet(context) {
     );
 
     if (shellyResponse.ok) {
-      return htmlResponse("Porta aperta ✅", true);
+      return buildPage("Porta aperta ✅", "#16a34a", false);
     } else {
       const errorText = await shellyResponse.text();
-      return htmlResponse("Errore Shelly: " + errorText, false);
+      return buildPage("Errore Shelly: " + errorText, "#dc2626", true);
     }
   } catch (err) {
-    return htmlResponse("Errore di rete: " + err.message, false);
+    return buildPage("Errore di rete: " + err.message, "#dc2626", true);
   }
 }
