@@ -10,11 +10,11 @@ export async function onRequestGet(context) {
   const SHELLY_AUTH_KEY = env.SHELLY_AUTH_KEY;
   const SHELLY_DEVICE_ID = env.SHELLY_DEVICE_ID;
 
-  // Spostiamo la funzione qui, così ha accesso immediato a tutte le variabili sopra!
+  // 1. DEFINIAMO SUBITO LA FUNZIONE HTML
   function htmlResponse(message, ok) {
     const color = ok ? "#16a34a" : "#dc2626";
 
-    // Se OK è false, mostriamo il form di riprova perfettamente integrato
+    // Se OK è false, iniettiamo il form di riprova
     const retrySection = ok
       ? ""
       : `
@@ -70,7 +70,7 @@ export async function onRequestGet(context) {
     );
   }
 
-  // CONTROLLI LOGICI
+  // 2. ORA FACCIAMO I CONTROLLI (La funzione htmlResponse adesso è già pronta e non fallirà)
   if (!pin) {
     return htmlResponse("Inserisci il PIN per aprire", false);
   }
