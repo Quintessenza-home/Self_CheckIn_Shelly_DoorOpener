@@ -46,27 +46,28 @@ export async function onRequestGet(context) {
     return htmlResponse("PIN errato ❌", false);
   }
 
-  try {
-    const shellyResponse = await fetch(
-      `https://${SHELLY_SERVER}/v2/devices/api/set/switch?auth_key=${SHELLY_AUTH_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: SHELLY_DEVICE_ID,
-          channel: 0,
-          on: true,
-          toggle_after: 5 // la porta si "sblocca" per 2 secondi poi torna off in automatico
-        })
-      }
-    );
+try {
+  const shellyResponse = await fetch(
+    `https://${SHELLY_SERVER}/v2/devices/api/set/switch?auth_key=${SHELLY_AUTH_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: SHELLY_DEVICE_ID,
+        channel: 0,
+        on: true,
+        toggle_after: 5
+      })
+    }
+  );
 
-if (shellyResponse.ok) {
-  return htmlResponse("Porta aperta ✅", true);
-} else {
-  const errorText = await shellyResponse.text();
-  return htmlResponse("Errore: " + errorText, false);
-}
+  if (shellyResponse.ok) {
+    return htmlResponse("Porta aperta ✅", true);
+  } else {
+    const errorText = await shellyResponse.text();
+    return htmlResponse("Errore: " + errorText, false);
   }
+} catch (err) {
+  return htmlResponse("Errore: " + err.message, false);
 }
 
