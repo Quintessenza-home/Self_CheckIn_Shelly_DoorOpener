@@ -10,12 +10,11 @@ export async function onRequestGet(context) {
   const SHELLY_AUTH_KEY = env.SHELLY_AUTH_KEY;
   const SHELLY_DEVICE_ID = env.SHELLY_DEVICE_ID;
 
+  // Spostiamo la funzione qui, così ha accesso immediato a tutte le variabili sopra!
   function htmlResponse(message, ok) {
     const color = ok ? "#16a34a" : "#dc2626";
 
-    // Se è andato tutto bene, mostriamo solo il messaggio di successo.
-    // Se c'è stato un errore (PIN sbagliato, mancante, o problema tecnico),
-    // mostriamo anche un campo per riprovare subito e un link per tornare alla home.
+    // Se OK è false, mostriamo il form di riprova perfettamente integrato
     const retrySection = ok
       ? ""
       : `
@@ -28,7 +27,7 @@ export async function onRequestGet(context) {
             maxlength="6"
             autofocus
             required
-            placeholder="Inserisci PIN"
+            placeholder="Reinserisci PIN"
             style="width:100%; box-sizing:border-box; padding:0.75rem; font-size:1.3rem;
                    text-align:center; letter-spacing:0.2rem; border:1px solid #d4d4d8;
                    border-radius:8px; margin-bottom:0.75rem;"
@@ -71,6 +70,7 @@ export async function onRequestGet(context) {
     );
   }
 
+  // CONTROLLI LOGICI
   if (!pin) {
     return htmlResponse("Inserisci il PIN per aprire", false);
   }
@@ -98,9 +98,9 @@ export async function onRequestGet(context) {
       return htmlResponse("Porta aperta ✅", true);
     } else {
       const errorText = await shellyResponse.text();
-      return htmlResponse("Errore: " + errorText, false);
+      return htmlResponse("Errore Shelly: " + errorText, false);
     }
   } catch (err) {
-    return htmlResponse("Errore: " + err.message, false);
+    return htmlResponse("Errore di rete: " + err.message, false);
   }
 }
