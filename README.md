@@ -1,4 +1,4 @@
-# OpenDoor 🔓
+# Self CheckIn Shelly DoorOpener  🔓
 
 A simple, free, no-login system to open a door/gate remotely by sharing a link and a PIN. Built on Cloudflare Pages Functions and the Shelly Cloud API.
 
