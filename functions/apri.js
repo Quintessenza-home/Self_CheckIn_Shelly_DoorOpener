@@ -1,4 +1,4 @@
-// functions/apri.js
+// 
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -9,7 +9,7 @@ export async function onRequestGet(context) {
   const SHELLY_AUTH_KEY = env.SHELLY_AUTH_KEY;
   const SHELLY_DEVICE_ID = env.SHELLY_DEVICE_ID;
 
-  // Intercettiamo la chiamata AJAX/Fetch fatta dalla pagina stessa
+  // 
   if (url.searchParams.has("ajax")) {
     if (!pin || pin !== VALID_PIN) {
       return new Response(JSON.stringify({ success: false, msg: "PIN errato ❌" }), {
@@ -27,7 +27,7 @@ export async function onRequestGet(context) {
             id: SHELLY_DEVICE_ID,
             channel: 0,
             on: true,
-            toggle_after: 5
+            toggle_after: 0.5 //This to set time for the switch to go back to off state 
           })
         }
       );
@@ -48,7 +48,7 @@ export async function onRequestGet(context) {
     }
   }
 
-  // Se l'utente arriva sulla pagina normalmente, gli mostriamo l'interfaccia statica (che NON scompare mai)
+  // 
   return new Response(
     `<!DOCTYPE html>
     <html lang="it">
@@ -102,14 +102,14 @@ export async function onRequestGet(context) {
             if (data.success) {
               statusDiv.style.color = "#16a34a";
               statusDiv.innerText = data.msg;
-              // Nascondiamo input e bottone solo se il codice è giusto!
+              // 
               pinInput.style.display = "none";
               btn.style.display = "none";
               document.getElementById('title').innerText = "Benvenuto!";
             } else {
               statusDiv.style.color = "#dc2626";
               statusDiv.innerText = data.msg;
-              pinInput.value = ""; // Svuota il campo per riprovare
+              pinInput.value = ""; // 
               pinInput.focus();
               btn.disabled = false;
             }
