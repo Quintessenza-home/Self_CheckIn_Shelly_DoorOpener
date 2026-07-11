@@ -1,23 +1,28 @@
-// 
-export async function onRequestGet(context) {
+// functions/apri.js
+// Accetta sia GET (per caricare la pagina) sia POST (per ricevere il PIN nascosto)
+export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const pin = url.searchParams.get("pin");
 
   const VALID_PIN = env.VALID_PIN;
   const SHELLY_SERVER = env.SHELLY_SERVER;
   const SHELLY_AUTH_KEY = env.SHELLY_AUTH_KEY;
   const SHELLY_DEVICE_ID = env.SHELLY_DEVICE_ID;
 
-  // 
-  if (url.searchParams.has("ajax")) {
-    if (!pin || pin !== VALID_PIN) {
-      return new Response(JSON.stringify({ success: false, msg: "PIN errato ❌" }), {
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
+  // --- GESTIONE INVIO PIN (Metodo POST in background) ---
+  if (request.method === "POST") {
     try {
+      // Leggiamo i dati inviati in formato JSON dal JavaScript della pagina
+      const body = await request.json();
+      const pin = body.pin;
+
+      if (!pin || pin !== VALID_PIN) {
+        return new Response(JSON.stringify({ success: false, msg: "PIN errato ❌" }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // Chiamata allo Shelly Cloud
       const shellyResponse = await fetch(
         `https://${SHELLY_SERVER}/v2/devices/api/set/switch?auth_key=${SHELLY_AUTH_KEY}`,
         {
@@ -27,7 +32,7 @@ export async function onRequestGet(context) {
             id: SHELLY_DEVICE_ID,
             channel: 0,
             on: true,
-            toggle_after: 0.5 //This to set time for the switch to go back to off state 
+            toggle_after: 5
           })
         }
       );
@@ -42,13 +47,13 @@ export async function onRequestGet(context) {
         });
       }
     } catch (err) {
-      return new Response(JSON.stringify({ success: false, msg: "Errore di rete" }), {
+      return new Response(JSON.stringify({ success: false, msg: "Errore nei dati" }), {
         headers: { "Content-Type": "application/json" }
       });
     }
   }
 
-  // 
+  // --- VISUALIZZAZIONE PAGINA INIZIALE (Metodo GET normale) ---
   return new Response(
     `<!DOCTYPE html>
     <html lang="it">
@@ -75,7 +80,7 @@ export async function onRequestGet(context) {
       <div class="box">
         <h1 id="title">Inserisci PIN</h1>
         
-        <input type="tel" id="pinCode" inputmode="numeric" pattern="[0-9]*" maxlength="6" autofocus placeholder="••••">
+        <input type="password" id="pinCode" inputmode="numeric" pattern="[0-9]*" maxlength="6" autofocus placeholder="••••">
         <button id="btn" onclick="inviaCodice()">Apri porta</button>
         
         <div id="statusMessage"></div>
@@ -95,21 +100,24 @@ export async function onRequestGet(context) {
           btn.disabled = true;
 
           try {
-            // Chiamiamo la stessa pagina in background senza ricaricarla
-            const res = await fetch(\`/apri?pin=\${pin}&ajax=1\`);
+            // Modificato in POST inviando i dati nascosti nel body come JSON
+            const res = await fetch('/apri', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pin: pin })
+            });
             const data = await res.json();
 
             if (data.success) {
               statusDiv.style.color = "#16a34a";
               statusDiv.innerText = data.msg;
-              // 
               pinInput.style.display = "none";
               btn.style.display = "none";
               document.getElementById('title').innerText = "Benvenuto!";
             } else {
               statusDiv.style.color = "#dc2626";
               statusDiv.innerText = data.msg;
-              pinInput.value = ""; // 
+              pinInput.value = ""; 
               pinInput.focus();
               btn.disabled = false;
             }
