@@ -8,7 +8,7 @@ export async function onRequest(context) {
   // --- 1. GESTIONE ACCESSO PROTETTO AL SETUP (/setup) ---
   if (url.pathname.endsWith("/setup")) {
     const key = url.searchParams.get("key");
-
+ 
     // Se la chiave è assente o errata, mostra la schermata di Login
     if (!key || key !== SETUP_PASSWORD) {
       return new Response(
