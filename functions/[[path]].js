@@ -1,4 +1,4 @@
-// functions/apri.js o functions/index.js
+// functions/apri.js o  functions/index.js
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
