@@ -1,15 +1,15 @@
-// functions/apri.js o functions/index.js
+// functions/[[path]].js (o functions/index.js / apri.js)
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
 
-  const SETUP_PASSWORD = env.SETUP_PASSWORD || "admin"; // Se non configurata, la password di default è "admin"
+  const SETUP_PASSWORD = env.SETUP_PASSWORD || "admin";
 
   // --- 1. GESTIONE ACCESSO PROTETTO AL SETUP (/setup) ---
   if (url.pathname.endsWith("/setup")) {
     const key = url.searchParams.get("key");
 
-    // Se la chiave è assente o errata, mostra la schermata di Login
     if (!key || key !== SETUP_PASSWORD) {
       return new Response(
         `<!DOCTYPE html>
@@ -19,21 +19,31 @@ export async function onRequest(context) {
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>Accesso Limitato</title>
           <style>
-            body { font-family: -apple-system, sans-serif; display:flex; align-items:center;
-                   justify-content:center; height:100vh; margin:0; background:#f4f4f5; }
-            .box { text-align:center; padding:2rem 2.5rem; border-radius:12px; background:white;
-                   box-shadow:0 2px 10px rgba(0,0,0,0.08); width:260px; }
-            h1 { color:#27272a; font-size:1.3rem; margin:0; margin-bottom:1.5rem; }
-            input { width:100%; box-sizing:border-box; padding:0.75rem; font-size:1.1rem;
-                   text-align:center; border:1px solid #d4d4d8; border-radius:8px; margin-bottom:0.75rem; outline:none; }
-            button { width:100%; padding:0.75rem; font-size:1rem; font-weight:600; color:white;
-                     background:#2563eb; border:none; border-radius:8px; cursor:pointer; }
-            .error-msg { color: #dc2626; font-size: 0.9rem; margin-bottom: 0.75rem; font-weight: 600; }
+            :root {
+              --bg: #fbf9f5;
+              --card-bg: #ffffff;
+              --border: #e5e0d8;
+              --border-dark: #18181b;
+              --text-main: #18181b;
+              --text-subtle: #71717a;
+              --brand: #e05d38;
+              --radius: 14px;
+            }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background: var(--bg); color: var(--text-main); padding: 1rem; box-sizing: border-box; }
+            .box { text-align:center; padding:2rem 2.5rem; border-radius: var(--radius); background: var(--card-bg); border: 2px solid var(--border-dark); box-shadow: 4px 4px 0px var(--border-dark); width:100%; max-width: 320px; }
+            .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--brand); margin-bottom: 0.5rem; display: block; }
+            h1 { color: var(--text-main); font-size: 1.4rem; margin:0 0 1.5rem 0; font-weight: 800; }
+            input { width:100%; box-sizing:border-box; padding:0.85rem; font-size:1.1rem; text-align:center; border: 2px solid var(--border); border-radius: 8px; margin-bottom: 1rem; outline:none; background: #faf8f5; transition: border-color 0.2s; }
+            input:focus { border-color: var(--border-dark); }
+            button { width:100%; padding:0.85rem; font-size:1rem; font-weight:700; color:white; background: var(--border-dark); border:none; border-radius:8px; cursor:pointer; transition: transform 0.1s, opacity 0.2s; }
+            button:active { transform: scale(0.98); }
+            .error-msg { color: #dc2626; font-size: 0.85rem; margin-bottom: 0.75rem; font-weight: 600; }
           </style>
         </head>
         <body>
           <div class="box">
-            <h1>🛠️ Area Riservata</h1>
+            <span class="badge">Sicurezza</span>
+            <h1>Area Riservata</h1>
             ${key ? `<div class="error-msg">Password errata! ❌</div>` : ""}
             <form action="${url.pathname}" method="GET">
               <input type="password" name="key" autofocus placeholder="Inserisci Password" required>
@@ -46,7 +56,6 @@ export async function onRequest(context) {
       );
     }
 
-    // Se la password è corretta, mostra il configuratore (passando la chiave anche nell'action del form interno per non perderla)
     return new Response(
       `<!DOCTYPE html>
       <html lang="it">
@@ -55,29 +64,48 @@ export async function onRequest(context) {
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Configuratore Smart</title>
         <style>
-          body { font-family: -apple-system, sans-serif; background:#f4f4f5; margin:0; padding:2rem 1rem; color:#27272a; }
-          .container { max-width: 600px; margin: 0 auto; background:white; padding:2rem; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
-          h1 { font-size: 1.5rem; margin-top:0; border-bottom: 2px solid #f4f4f5; padding-bottom: 1rem; }
-          .section { margin-bottom: 1.5rem; background:#fafafa; padding:1rem; border-radius:8px; border:1px solid #e4e4e7; }
-          .section-title { font-weight:600; font-size:1.1rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; }
-          label { display:block; font-size:0.9rem; font-weight:600; margin-bottom:0.25rem; color:#52525b; }
-          input, select { width:100%; box-sizing:border-box; padding:0.6rem; border:1px solid #d4d4d8; border-radius:6px; margin-bottom:0.75rem; font-size:0.95rem; }
-          button { padding:0.6rem 1rem; font-weight:600; border-radius:6px; cursor:pointer; border:none; font-size:0.9rem; }
-          .btn-primary { background:#16a34a; color:white; width:100%; font-size:1rem; padding:0.8rem; }
-          .btn-secondary { background:#e4e4e7; color:#27272a; }
-          .btn-danger { background:#dc2626; color:white; padding:0.4rem 0.8rem; font-size:0.8rem; }
-          #outputArea { margin-top: 1.5rem; display:none; }
-          textarea { width:100%; height:120px; font-family:monospace; box-sizing:border-box; padding:0.5rem; border:1px solid #a1a1aa; border-radius:6px; background:#f8fafc; resize:none; }
-          .copy-success { color:#16a34a; font-weight:600; font-size:0.9rem; margin-top:0.5rem; display:none; }
+          :root {
+            --bg: #fbf9f5;
+            --card-bg: #ffffff;
+            --section-bg: #f6f3ed;
+            --border: #e5e0d8;
+            --border-dark: #18181b;
+            --text-main: #18181b;
+            --text-subtle: #71717a;
+            --brand: #e05d38;
+            --brand-green: #15803d;
+            --radius: 14px;
+          }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin:0; padding: 2.5rem 1rem; color: var(--text-main); }
+          .container { max-width: 620px; margin: 0 auto; background: var(--card-bg); padding: 2.5rem; border-radius: var(--radius); border: 2px solid var(--border-dark); box-shadow: 4px 4px 0px var(--border-dark); }
+          .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--brand); margin-bottom: 0.25rem; display: block; }
+          h1 { font-size: 1.6rem; margin: 0; font-weight: 800; }
+          .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 1.25rem; margin-bottom: 1.5rem; }
+          .section { margin-bottom: 1.5rem; background: var(--section-bg); padding: 1.25rem; border-radius: 10px; border: 2px solid var(--border); }
+          .section-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+          label { display: block; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; color: var(--text-subtle); }
+          input, select { width: 100%; box-sizing: border-box; padding: 0.75rem; border: 2px solid var(--border); border-radius: 8px; margin-bottom: 1rem; font-size: 0.95rem; background: #ffffff; color: var(--text-main); }
+          input:focus, select:focus { border-color: var(--border-dark); outline: none; }
+          button { padding: 0.75rem 1.2rem; font-weight: 700; border-radius: 8px; cursor: pointer; border: 2px solid var(--border-dark); font-size: 0.95rem; transition: transform 0.1s; }
+          button:active { transform: scale(0.98); }
+          .btn-primary { background: var(--border-dark); color: white; width: 100%; font-size: 1rem; padding: 0.9rem; margin-top: 1rem; }
+          .btn-secondary { background: #ffffff; color: var(--text-main); }
+          .btn-danger { background: #ef4444; color: white; border-color: #b91c1c; padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+          #outputArea { margin-top: 2rem; display: none; }
+          textarea { width: 100%; height: 140px; font-family: monospace; box-sizing: border-box; padding: 0.75rem; border: 2px solid var(--border-dark); border-radius: 8px; background: #18181b; color: #38bdf8; resize: none; font-size: 0.9rem; }
+          .copy-success { color: var(--brand-green); font-weight: 700; font-size: 0.9rem; margin-top: 0.5rem; display: none; }
         </style>
       </head>
       <body>
         <div class="container">
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f4f5; padding-bottom: 1rem; margin-bottom: 1rem;">
-            <h1 style="margin:0; border:none; padding:0;">🛠️ Configuratore Tastierino</h1>
-            <a href="${url.pathname}" style="color: #71717a; text-decoration: none; font-size: 0.9rem; font-weight: 600;">Esci 🚪</a>
+          <div class="header-bar">
+            <div>
+              <span class="badge">Pannello Amministrativo</span>
+              <h1>Configuratore Smart</h1>
+            </div>
+            <a href="${url.pathname}" style="color: var(--text-subtle); text-decoration: none; font-size: 0.9rem; font-weight: 700;">Esci 🚪</a>
           </div>
-          
+
           <div class="section">
             <div class="section-title">Impostazioni Generali</div>
             <label>Modalità di Apertura</label>
@@ -85,21 +113,21 @@ export async function onRequest(context) {
               <option value="sequence">Sequenziale (Porta 1 -> Porta 2)</option>
               <option value="choice">Selezione Libera (Scegli quale aprire)</option>
             </select>
-            
+
             <label>Telefono Assistenza (Opzionale)</label>
             <input type="text" id="emergency" placeholder="Es. +393331234567">
           </div>
 
           <div id="doorsContainer"></div>
-          
-          <button class="btn-secondary" onclick="addDoor()" style="margin-bottom:1.5rem;">＋ Aggiungi Porta</button>
-          
+
+          <button class="btn-secondary" onclick="addDoor()" style="width:100%; margin-bottom:1.5rem;">＋ Aggiungi Porta</button>
+
           <button class="btn-primary" onclick="generateConfig()">Genera Codice di Configurazione</button>
 
           <div id="outputArea">
-            <label style="color:#16a34a; font-size:1rem;">▼ Copia questo codice e incollalo su Cloudflare</label>
+            <label style="color: var(--brand); font-size:0.95rem; margin-bottom:0.5rem;">▼ Copia questo codice e incollalo su Cloudflare</label>
             <textarea id="jsonOutput" readonly></textarea>
-            <button class="btn-secondary" onclick="copyToClipboard()" style="width:100%; margin-top:0.5rem;">📋 Copia negli appunti</button>
+            <button class="btn-secondary" onclick="copyToClipboard()" style="width:100%; margin-top:0.75rem;">📋 Copia negli appunti</button>
             <div id="copyMsg" class="copy-success">✓ Codice copiato! Incollalo nella variabile "CONFIG" su Cloudflare.</div>
           </div>
         </div>
@@ -118,19 +146,19 @@ export async function onRequest(context) {
                 <span>Porta #\${doorCount}</span>
                 \${doorCount > 1 ? \`<button class="btn-danger" onclick="removeDoor(\${doorCount})">Rimuovi</button>\` : ''}
               </div>
-              <label>Nome identificativo (es. Portone Esterno)</label>
-              <input type="text" class="door-name" value="\${name}" placeholder="Es. Cancello Principale" required>
-              
-              <label>Server Shelly (es. shelly-281-eu)</label>
+              <label>Nome identificativo</label>
+              <input type="text" class="door-name" value="\${name}" placeholder="Es. Portone Esterno" required>
+
+              <label>Server Shelly</label>
               <input type="text" class="door-server" value="\${server}" placeholder="shelly-xxx-eu" required>
-              
+
               <label>Shelly Device ID</label>
               <input type="text" class="door-id" value="\${deviceId}" placeholder="Es. 78eesdgdfg9d0" required>
-              
+
               <label>Shelly Auth Key (Token)</label>
               <input type="password" class="door-token" value="\${authKey}" placeholder="Inserisci il token lungo" required>
-              
-              <label>PIN di sblocco (Lascia VUOTO se non vuoi password)</label>
+
+              <label>PIN di sblocco (Opzionale)</label>
               <input type="text" class="door-pin" value="\${pin}" placeholder="Es. 1234 (opzionale)">
             \`;
             container.appendChild(div);
@@ -177,7 +205,6 @@ export async function onRequest(context) {
             setTimeout(() => { msg.style.display = 'none'; }, 4000);
           }
 
-          // Avvia con una porta di default
           addDoor();
         </script>
       </body>
@@ -219,7 +246,7 @@ export async function onRequest(context) {
             id: door.device_id,
             channel: 0,
             on: true,
-            toggle_after: 5
+            toggle_after: 2
           })
         }
       );
@@ -229,7 +256,7 @@ export async function onRequest(context) {
           headers: { "Content-Type": "application/json" }
         });
       } else {
-        return new Response(JSON.stringify({ success: false, msg: "Errore Shelly" }), {
+        return new Response(JSON.stringify({ success: false, msg: "Errore Shelly Cloud" }), {
           headers: { "Content-Type": "application/json" }
         });
       }
@@ -254,32 +281,42 @@ export async function onRequest(context) {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>Apertura Smart</title>
       <style>
-        body { font-family: -apple-system, sans-serif; display:flex; align-items:center;
-               justify-content:center; min-height:100vh; margin:0; background:#f4f4f5; padding:1rem; box-sizing:border-box; }
-        .box { text-align:center; padding:2rem 2.5rem; border-radius:12px; background:white;
-               box-shadow:0 2px 10px rgba(0,0,0,0.08); width:280px; }
-        .logo { max-width: 120px; height: auto; margin-bottom: 1.5rem; display: block; margin-left: auto; margin-right: auto; }
-        h1 { color:#27272a; font-size:1.2rem; margin:0; margin-bottom:1.5rem; }
-        input { width:100%; box-sizing:border-box; padding:0.75rem; font-size:1.3rem;
-               text-align:center; letter-spacing:0.2rem; border:1px solid #d4d4d8;
-               border-radius:8px; margin-bottom:0.75rem; outline:none; }
-        button { width:100%; padding:0.75rem; font-size:1rem; font-weight:600; color:white;
-                 background:#16a34a; border:none; border-radius:8px; cursor:pointer; margin-bottom:0.5rem; }
-        button:disabled { background:#a1a1aa; }
-        .btn-choice { background: #2563eb; }
-        #statusMessage { margin-top: 1rem; font-weight: 600; font-size: 1.1rem; min-height: 24px; }
-        .emergency { margin-top: 2rem; border-top: 1px solid #e4e4e7; padding-top: 1rem; }
-        .emergency a { color: #dc2626; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+        :root {
+          --bg: #fbf9f5;
+          --card-bg: #ffffff;
+          --border-dark: #18181b;
+          --border-soft: #e5e0d8;
+          --text-main: #18181b;
+          --text-subtle: #71717a;
+          --brand: #e05d38;
+          --brand-green: #15803d;
+          --radius: 16px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background: var(--bg); color: var(--text-main); padding:1.5rem; box-sizing:border-box; }
+        .box { text-align:center; padding: 2.25rem 2rem; border-radius: var(--radius); background: var(--card-bg); border: 2px solid var(--border-dark); box-shadow: 4px 4px 0px var(--border-dark); width: 100%; max-width: 320px; box-sizing: border-box; }
+        .logo { max-width: 110px; height: auto; margin-bottom: 1.25rem; display: block; margin-left: auto; margin-right: auto; }
+        .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--brand); margin-bottom: 0.5rem; display: block; }
+        h1 { color: var(--text-main); font-size: 1.35rem; font-weight: 800; margin: 0 0 1.5rem 0; line-height: 1.3; }
+        input { width: 100%; box-sizing: border-box; padding: 0.85rem; font-size: 1.4rem; text-align: center; letter-spacing: 0.3rem; border: 2px solid var(--border-dark); border-radius: 10px; margin-bottom: 1rem; outline: none; background: #faf8f5; }
+        button { width: 100%; padding: 0.9rem 1rem; font-size: 1rem; font-weight: 700; color: white; background: var(--border-dark); border: 2px solid var(--border-dark); border-radius: 10px; cursor: pointer; margin-bottom: 0.75rem; transition: transform 0.1s, background 0.2s; }
+        button:active { transform: scale(0.97); }
+        button:disabled { background: #a1a1aa; border-color: #a1a1aa; cursor: not-allowed; }
+        .btn-choice { background: #ffffff; color: var(--text-main); border: 2px solid var(--border-dark); box-shadow: 2px 2px 0px var(--border-dark); }
+        .btn-choice:active { box-shadow: 0px 0px 0px var(--border-dark); }
+        #statusMessage { margin-top: 1.25rem; font-weight: 700; font-size: 1rem; min-height: 24px; word-break: break-word; }
+        .emergency { margin-top: 1.75rem; border-t: 2px solid var(--border-soft); padding-top: 1.25rem; }
+        .emergency a { color: var(--brand); text-decoration: none; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
       </style>
     </head>
     <body>
       <div class="box">
         <img src="/logo.png" id="logoImg" class="logo" onerror="this.style.display='none'">
+        <span class="badge">Controllo Ingressi</span>
         <h1 id="title">Inizializzazione...</h1>
         <div id="actionArea"></div>
         <div id="statusMessage"></div>
         <div id="emergencySection" class="emergency" style="display:none;">
-          <a id="emergencyLink" href="#">📞 Serve aiuto? Chiama l'assistenza</a>
+          <a id="emergencyLink" href="#">📞 Assistenza Immediata</a>
         </div>
       </div>
 
@@ -302,7 +339,7 @@ export async function onRequest(context) {
         }
 
         function loadChoiceMenu() {
-          document.getElementById('title').innerText = "Seleziona cosa aprire";
+          document.getElementById('title').innerText = "Seleziona ingresso";
           const area = document.getElementById('actionArea');
           area.innerHTML = "";
           config.doors.forEach((door, index) => {
@@ -338,14 +375,14 @@ export async function onRequest(context) {
 
         function showPinScreen(doorIndex, fallbackToMenu) {
           const door = config.doors[doorIndex];
-          document.getElementById('title').innerText = "Inserisci PIN per " + door.name;
+          document.getElementById('title').innerText = "PIN per " + door.name;
           const area = document.getElementById('actionArea');
           area.innerHTML = \`
             <input type="password" id="pinCode" inputmode="numeric" pattern="[0-9]*" maxlength="6" autofocus placeholder="••••">
             <button id="btnInvia">Verifica e Apri</button>
           \`;
           if (fallbackToMenu) {
-            area.innerHTML += \`<button style="background:#71717a; margin-top:0.5rem;" onclick="loadChoiceMenu()">Indietro</button>\`;
+            area.innerHTML += \`<button style="background: transparent; color: var(--text-subtle); border: 2px solid var(--border-soft); margin-top: 0.25rem;" onclick="loadChoiceMenu()">Indietro</button>\`;
           }
           document.getElementById('btnInvia').onclick = () => {
             const pin = document.getElementById('pinCode').value;
@@ -355,7 +392,7 @@ export async function onRequest(context) {
 
         async function eseguiApertura(doorIndex, pin, fallbackToMenu = false) {
           const statusDiv = document.getElementById('statusMessage');
-          statusDiv.style.color = "#71717a";
+          statusDiv.style.color = "var(--text-subtle)";
           statusDiv.innerText = "Apertura in corso...";
           try {
             const res = await fetch(window.location.pathname, {
@@ -365,7 +402,7 @@ export async function onRequest(context) {
             });
             const data = await res.json();
             if (data.success) {
-              statusDiv.style.color = "#16a34a";
+              statusDiv.style.color = "var(--brand-green)";
               statusDiv.innerText = data.msg;
               if (config.mode === "sequence") {
                 currentStep++;
