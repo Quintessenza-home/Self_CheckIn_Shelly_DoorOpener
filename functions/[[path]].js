@@ -219,7 +219,7 @@ export async function onRequest(context) {
             id: door.device_id,
             channel: 0,
             on: true,
-            toggle_after: 5
+            toggle_after: 0.5
           })
         }
       );
