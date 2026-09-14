@@ -5,12 +5,11 @@ export async function onRequest(context) {
   const url = new URL(request.url);
 
   // ---------------------------------------------------------------------------
-  // 1. GESTIONE ROUTE: /setup (Interfaccia di configurazione)
+  // 1. ROUTE: /setup (Interfaccia di configurazione)
   // ---------------------------------------------------------------------------
   if (url.pathname === "/setup") {
     const setupPassword = env.SETUP_PASSWORD || "";
 
-    // Gestione salvataggio / verifica via POST
     if (request.method === "POST") {
       try {
         const body = await request.json();
@@ -28,7 +27,6 @@ export async function onRequest(context) {
       }
     }
 
-    // Rendering dell'interfaccia HTML di Setup
     const setupHtml = `<!DOCTYPE html>
 <html lang="it">
 <head>
@@ -41,13 +39,13 @@ export async function onRequest(context) {
     .container { max-width: 600px; margin: 0 auto; background: var(--card); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     h1, h2 { color: var(--text); margin-top: 0; }
     label { display: block; font-weight: 600; margin-top: 14px; margin-bottom: 4px; font-size: 0.9rem; }
-    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
     small { color: #64748b; font-size: 0.8rem; display: block; margin-top: 2px; }
     .door-card { background: #f1f5f9; padding: 16px; border-radius: 8px; margin-top: 16px; position: relative; border: 1px solid #e2e8f0; }
     .btn { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 20px; font-size: 1rem; }
     .btn-secondary { background: #64748b; margin-top: 10px; }
     .btn-danger { background: #ef4444; width: auto; padding: 6px 12px; font-size: 0.85rem; margin-top: 10px; }
-    #auth-sec, #config-sec { display: none; }
+    #config-sec { display: none; }
     pre { background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
   </style>
 </head>
@@ -65,8 +63,8 @@ export async function onRequest(context) {
     <div id="config-sec">
       <label>Modalità di Apertura</label>
       <select id="mode-select">
-        <option value="sequence">Sequenziale (Guida passo-passo)</option>
         <option value="free">Selezione Libera (Tutti i pulsanti visibili)</option>
+        <option value="sequence">Sequenziale (Guida passo-passo)</option>
       </select>
 
       <label>Telefono Assistenza (Opzionale)</label>
@@ -101,7 +99,7 @@ export async function onRequest(context) {
         savedPwd = pwd;
         document.getElementById('login-sec').style.display = 'none';
         document.getElementById('config-sec').style.display = 'block';
-        addDoor(); // Ne aggiunge una vuota di default
+        addDoor();
       } else {
         document.getElementById('login-err').style.display = 'block';
       }
@@ -125,11 +123,11 @@ export async function onRequest(context) {
         <input type="password" class="d-key" value="\${data.auth_key || ''}" placeholder="Chiave API Shelly">
         
         <label>PIN di Sicurezza (Opzionale)</label>
-        <input type="text" class="d-pin" value="\${data.pin || ''}" placeholder="Es. 1234 (lascia vuoto se non richiesto)">
+        <input type="text" class="d-pin" value="\${data.pin || ''}" placeholder="Es. 1234 (opzionale)">
 
         <label>Durata Impulso Apertura (in secondi)</label>
         <input type="number" class="d-duration" value="\${data.duration || 0.5}" step="0.1" min="0.1" max="60" placeholder="Es. 0.5">
-        <small>Esempi: 0.5 o 0.3 per portoncini elettrici; 2.0 per cancelli automatici.</small>
+        <small>Consigliato: 0.5 o 0.3 per portoncini elettrici; 2.0 per cancelli automatici.</small>
         
         <button class="btn btn-danger" onclick="this.parentElement.remove()">Elimina Porta</button>
       \`;
@@ -183,7 +181,7 @@ export async function onRequest(context) {
   }
 
   // ---------------------------------------------------------------------------
-  // 2. GESTIONE API POST: Esecuzione Comando Apertura Porta
+  // 2. ROUTE POST: /open (Chiamata backend a Shelly Cloud API v2)
   // ---------------------------------------------------------------------------
   if (request.method === "POST" && url.pathname === "/open") {
     try {
@@ -193,41 +191,53 @@ export async function onRequest(context) {
 
       const rawConfig = env.CONFIG;
       if (!rawConfig) {
-        return new Response(JSON.stringify({ error: "Sistema non configurato (CONFIG mancante)" }), { status: 500 });
+        return new Response(JSON.stringify({ error: "Variabile CONFIG non presente su Cloudflare" }), { status: 500 });
       }
 
       const config = JSON.parse(rawConfig);
-      const door = config.doors[doorIndex];
+      const door = config.doors ? config.doors[doorIndex] : null;
 
       if (!door) {
         return new Response(JSON.stringify({ error: "Porta non trovata" }), { status: 404 });
       }
 
-      // Check PIN
+      // Verifica del PIN
       if (door.pin && door.pin !== userPin) {
         return new Response(JSON.stringify({ error: "PIN errato" }), { status: 403 });
       }
 
-      // Imposta la durata d'impulso (default 0.5s per portoncini se non definita)
       const durationSeconds = door.duration ? parseFloat(door.duration) : 0.5;
 
-      // Normalizzazione URL Server Shelly
-      let serverUrl = door.server.replace(/^https?:\/\//, "").replace(/\/$/, "");
+      // Normalizzazione del Dominio Server
+      let host = door.server.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+      if (!host.includes(".")) {
+        host = `${host}.shelly.cloud`;
+      }
 
-      // Chiamata Server-to-Server alle API Cloud di Shelly
-      const shellyResponse = await fetch(`https://${serverUrl}/v2/devices/api/set/switch?auth_key=${door.auth_key}`, {
+      const cleanAuthKey = door.auth_key.trim();
+      const cleanDeviceId = door.device_id.trim();
+
+      // Invio richiesta alle API Cloud v2 di Shelly con parametri ufficiali
+      const shellyApiUrl = `https://${host}/v2/devices/api/set/switch?auth_key=${encodeURIComponent(cleanAuthKey)}`;
+      
+      const shellyResponse = await fetch(shellyApiUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${cleanAuthKey}`
+        },
         body: JSON.stringify({
-          id: door.device_id,
+          id: cleanDeviceId,
           channel: 0,
           on: true,
-          toggle_after: durationSeconds
+          auto_off: durationSeconds
         })
       });
 
+      const resText = await shellyResponse.text();
+
       if (!shellyResponse.ok) {
-        return new Response(JSON.stringify({ error: "Errore di comunicazione con lo Shelly" }), { status: 502 });
+        return new Response(JSON.stringify({ error: `Shelly Error (${shellyResponse.status}): ${resText}` }), { status: 502 });
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -235,12 +245,12 @@ export async function onRequest(context) {
       });
 
     } catch (e) {
-      return new Response(JSON.stringify({ error: "Errore interno server" }), { status: 500 });
+      return new Response(JSON.stringify({ error: `Errore interno: ${e.message}` }), { status: 500 });
     }
   }
 
   // ---------------------------------------------------------------------------
-  // 3. RENDERING HOME PAGE (Tastierino di Apertura)
+  // 3. ROUTE GET: / (Tastierino Ingressi)
   // ---------------------------------------------------------------------------
   const rawConfig = env.CONFIG || '{"mode":"free","doors":[],"emergency_contact":""}';
   let configData = {};
@@ -264,7 +274,7 @@ export async function onRequest(context) {
     .btn-door.error { background: #ef4444; }
     .pin-input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; text-align: center; font-size: 1.2rem; box-sizing: border-box; }
     .emergency { margin-top: 20px; display: inline-block; color: #94a3b8; text-decoration: none; font-size: 0.9rem; }
-    .status { margin-top: 10px; font-size: 0.9rem; min-height: 20px; }
+    .status { margin-top: 10px; font-size: 0.85rem; word-break: break-word; min-height: 20px; }
   </style>
 </head>
 <body>
@@ -341,7 +351,7 @@ export async function onRequest(context) {
         btn.textContent = "Errore!";
         btn.classList.add('error');
         status.style.color = "#ef4444";
-        status.textContent = "Errore di connessione";
+        status.textContent = "Errore di connessione al server";
       }
 
       setTimeout(() => {
@@ -349,7 +359,7 @@ export async function onRequest(context) {
         btn.classList.remove('success', 'error');
         btn.disabled = false;
         status.textContent = "";
-      }, 3000);
+      }, 4000);
     }
 
     renderUI();
