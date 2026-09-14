@@ -1,373 +1,402 @@
-// functions/[[path]].js
-
+// functions/apri.js o functions/index.js
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
 
-  // ---------------------------------------------------------------------------
-  // 1. ROUTE: /setup (Interfaccia di configurazione)
-  // ---------------------------------------------------------------------------
-  if (url.pathname === "/setup") {
-    const setupPassword = env.SETUP_PASSWORD || "";
+  const SETUP_PASSWORD = env.SETUP_PASSWORD || "admin"; // Se non configurata, la password di default è "admin"
 
-    if (request.method === "POST") {
-      try {
-        const body = await request.json();
-        if (body.password !== setupPassword) {
-          return new Response(JSON.stringify({ error: "Password errata" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" }
-          });
-        }
-        return new Response(JSON.stringify({ success: true }), {
-          headers: { "Content-Type": "application/json" }
-        });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: "Richiesta non valida" }), { status: 400 });
-      }
+  // --- 1. GESTIONE ACCESSO PROTETTO AL SETUP (/setup) ---
+  if (url.pathname.endsWith("/setup")) {
+    const key = url.searchParams.get("key");
+
+    // Se la chiave è assente o errata, mostra la schermata di Login
+    if (!key || key !== SETUP_PASSWORD) {
+      return new Response(
+        `<!DOCTYPE html>
+        <html lang="it">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Accesso Limitato</title>
+          <style>
+            body { font-family: -apple-system, sans-serif; display:flex; align-items:center;
+                   justify-content:center; height:100vh; margin:0; background:#f4f4f5; }
+            .box { text-align:center; padding:2rem 2.5rem; border-radius:12px; background:white;
+                   box-shadow:0 2px 10px rgba(0,0,0,0.08); width:260px; }
+            h1 { color:#27272a; font-size:1.3rem; margin:0; margin-bottom:1.5rem; }
+            input { width:100%; box-sizing:border-box; padding:0.75rem; font-size:1.1rem;
+                   text-align:center; border:1px solid #d4d4d8; border-radius:8px; margin-bottom:0.75rem; outline:none; }
+            button { width:100%; padding:0.75rem; font-size:1rem; font-weight:600; color:white;
+                     background:#2563eb; border:none; border-radius:8px; cursor:pointer; }
+            .error-msg { color: #dc2626; font-size: 0.9rem; margin-bottom: 0.75rem; font-weight: 600; }
+          </style>
+        </head>
+        <body>
+          <div class="box">
+            <h1>🛠️ Area Riservata</h1>
+            ${key ? `<div class="error-msg">Password errata! ❌</div>` : ""}
+            <form action="${url.pathname}" method="GET">
+              <input type="password" name="key" autofocus placeholder="Inserisci Password" required>
+              <button type="submit">Accedi al Setup</button>
+            </form>
+          </div>
+        </body>
+        </html>`,
+        { headers: { "Content-Type": "text/html;charset=UTF-8" } }
+      );
     }
 
-    const setupHtml = `<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Setup - Opendoor</title>
-  <style>
-    :root { --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; --text: #0f172a; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; background: var(--card); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-    h1, h2 { color: var(--text); margin-top: 0; }
-    label { display: block; font-weight: 600; margin-top: 14px; margin-bottom: 4px; font-size: 0.9rem; }
-    input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
-    small { color: #64748b; font-size: 0.8rem; display: block; margin-top: 2px; }
-    .door-card { background: #f1f5f9; padding: 16px; border-radius: 8px; margin-top: 16px; position: relative; border: 1px solid #e2e8f0; }
-    .btn { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 20px; font-size: 1rem; }
-    .btn-secondary { background: #64748b; margin-top: 10px; }
-    .btn-danger { background: #ef4444; width: auto; padding: 6px 12px; font-size: 0.85rem; margin-top: 10px; }
-    #config-sec { display: none; }
-    pre { background: #0f172a; color: #38bdf8; padding: 16px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>⚙️ Setup Opendoor</h1>
-    
-    <div id="login-sec">
-      <label>Inserisci SETUP_PASSWORD</label>
-      <input type="password" id="pwd-input" placeholder="Password di amministrazione">
-      <button class="btn" onclick="checkAuth()">Accedi</button>
-      <p id="login-err" style="color:red; display:none; margin-top:10px;">Password errata.</p>
-    </div>
+    // Se la password è corretta, mostra il configuratore (passando la chiave anche nell'action del form interno per non perderla)
+    return new Response(
+      `<!DOCTYPE html>
+      <html lang="it">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Configuratore Smart</title>
+        <style>
+          body { font-family: -apple-system, sans-serif; background:#f4f4f5; margin:0; padding:2rem 1rem; color:#27272a; }
+          .container { max-width: 600px; margin: 0 auto; background:white; padding:2rem; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
+          h1 { font-size: 1.5rem; margin-top:0; border-bottom: 2px solid #f4f4f5; padding-bottom: 1rem; }
+          .section { margin-bottom: 1.5rem; background:#fafafa; padding:1rem; border-radius:8px; border:1px solid #e4e4e7; }
+          .section-title { font-weight:600; font-size:1.1rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; }
+          label { display:block; font-size:0.9rem; font-weight:600; margin-bottom:0.25rem; color:#52525b; }
+          input, select { width:100%; box-sizing:border-box; padding:0.6rem; border:1px solid #d4d4d8; border-radius:6px; margin-bottom:0.75rem; font-size:0.95rem; }
+          button { padding:0.6rem 1rem; font-weight:600; border-radius:6px; cursor:pointer; border:none; font-size:0.9rem; }
+          .btn-primary { background:#16a34a; color:white; width:100%; font-size:1rem; padding:0.8rem; }
+          .btn-secondary { background:#e4e4e7; color:#27272a; }
+          .btn-danger { background:#dc2626; color:white; padding:0.4rem 0.8rem; font-size:0.8rem; }
+          #outputArea { margin-top: 1.5rem; display:none; }
+          textarea { width:100%; height:120px; font-family:monospace; box-sizing:border-box; padding:0.5rem; border:1px solid #a1a1aa; border-radius:6px; background:#f8fafc; resize:none; }
+          .copy-success { color:#16a34a; font-weight:600; font-size:0.9rem; margin-top:0.5rem; display:none; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f4f5; padding-bottom: 1rem; margin-bottom: 1rem;">
+            <h1 style="margin:0; border:none; padding:0;">🛠️ Configuratore Tastierino</h1>
+            <a href="${url.pathname}" style="color: #71717a; text-decoration: none; font-size: 0.9rem; font-weight: 600;">Esci 🚪</a>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Impostazioni Generali</div>
+            <label>Modalità di Apertura</label>
+            <select id="mode">
+              <option value="sequence">Sequenziale (Porta 1 -> Porta 2)</option>
+              <option value="choice">Selezione Libera (Scegli quale aprire)</option>
+            </select>
+            
+            <label>Telefono Assistenza (Opzionale)</label>
+            <input type="text" id="emergency" placeholder="Es. +393331234567">
+          </div>
 
-    <div id="config-sec">
-      <label>Modalità di Apertura</label>
-      <select id="mode-select">
-        <option value="free">Selezione Libera (Tutti i pulsanti visibili)</option>
-        <option value="sequence">Sequenziale (Guida passo-passo)</option>
-      </select>
+          <div id="doorsContainer"></div>
+          
+          <button class="btn-secondary" onclick="addDoor()" style="margin-bottom:1.5rem;">＋ Aggiungi Porta</button>
+          
+          <button class="btn-primary" onclick="generateConfig()">Genera Codice di Configurazione</button>
 
-      <label>Telefono Assistenza (Opzionale)</label>
-      <input type="tel" id="contact-input" placeholder="Es. +393331234567">
+          <div id="outputArea">
+            <label style="color:#16a34a; font-size:1rem;">▼ Copia questo codice e incollalo su Cloudflare</label>
+            <textarea id="jsonOutput" readonly></textarea>
+            <button class="btn-secondary" onclick="copyToClipboard()" style="width:100%; margin-top:0.5rem;">📋 Copia negli appunti</button>
+            <div id="copyMsg" class="copy-success">✓ Codice copiato! Incollalo nella variabile "CONFIG" su Cloudflare.</div>
+          </div>
+        </div>
 
-      <h2>Porte / Cancelli</h2>
-      <div id="doors-container"></div>
-      
-      <button class="btn btn-secondary" onclick="addDoor()">+ Aggiungi Porta</button>
-      <button class="btn" onclick="generateConfig()">Genera Codice di Configurazione</button>
+        <script>
+          let doorCount = 0;
 
-      <div id="result-sec" style="display:none; margin-top:20px;">
-        <h3>Configurazione Generata</h3>
-        <p>Copia questo testo e incollalo nella variabile <strong>CONFIG</strong> su Cloudflare Pages:</p>
-        <pre id="json-output"></pre>
-        <button class="btn btn-secondary" onclick="copyConfig()">📋 Copia negli appunti</button>
-      </div>
-    </div>
-  </div>
+          function addDoor(name = "", server = "shelly-281-eu", deviceId = "", authKey = "", pin = "") {
+            doorCount++;
+            const container = document.getElementById('doorsContainer');
+            const div = document.createElement('div');
+            div.className = 'section';
+            div.id = 'door_' + doorCount;
+            div.innerHTML = \`
+              <div class="section-title">
+                <span>Porta #\${doorCount}</span>
+                \${doorCount > 1 ? \`<button class="btn-danger" onclick="removeDoor(\${doorCount})">Rimuovi</button>\` : ''}
+              </div>
+              <label>Nome identificativo (es. Portone Esterno)</label>
+              <input type="text" class="door-name" value="\${name}" placeholder="Es. Cancello Principale" required>
+              
+              <label>Server Shelly (es. shelly-281-eu)</label>
+              <input type="text" class="door-server" value="\${server}" placeholder="shelly-xxx-eu" required>
+              
+              <label>Shelly Device ID</label>
+              <input type="text" class="door-id" value="\${deviceId}" placeholder="Es. 78eesdgdfg9d0" required>
+              
+              <label>Shelly Auth Key (Token)</label>
+              <input type="password" class="door-token" value="\${authKey}" placeholder="Inserisci il token lungo" required>
+              
+              <label>PIN di sblocco (Lascia VUOTO se non vuoi password)</label>
+              <input type="text" class="door-pin" value="\${pin}" placeholder="Es. 1234 (opzionale)">
+            \`;
+            container.appendChild(div);
+          }
 
-  <script>
-    let savedPwd = '';
+          function removeDoor(id) {
+            document.getElementById('door_' + id).remove();
+          }
 
-    async function checkAuth() {
-      const pwd = document.getElementById('pwd-input').value;
-      const res = await fetch('/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pwd })
-      });
-      if (res.ok) {
-        savedPwd = pwd;
-        document.getElementById('login-sec').style.display = 'none';
-        document.getElementById('config-sec').style.display = 'block';
-        addDoor();
-      } else {
-        document.getElementById('login-err').style.display = 'block';
-      }
-    }
+          function generateConfig() {
+            const config = {
+              mode: document.getElementById('mode').value,
+              emergency_contact: document.getElementById('emergency').value,
+              doors: []
+            };
 
-    function addDoor(data = {}) {
-      const container = document.getElementById('doors-container');
-      const div = document.createElement('div');
-      div.className = 'door-card';
-      div.innerHTML = \`
-        <label>Nome Porta / Cancello</label>
-        <input type="text" class="d-name" value="\${data.name || ''}" placeholder="Es. Portoncino Ingresso">
-        
-        <label>Server Shelly</label>
-        <input type="text" class="d-server" value="\${data.server || ''}" placeholder="Es. shelly-281-eu.shelly.cloud">
-        
-        <label>Device ID Shelly</label>
-        <input type="text" class="d-id" value="\${data.device_id || ''}" placeholder="Es. 34845d62a12c">
-        
-        <label>Auth Key (Token) Shelly</label>
-        <input type="password" class="d-key" value="\${data.auth_key || ''}" placeholder="Chiave API Shelly">
-        
-        <label>PIN di Sicurezza (Opzionale)</label>
-        <input type="text" class="d-pin" value="\${data.pin || ''}" placeholder="Es. 1234 (opzionale)">
+            const names = document.querySelectorAll('.door-name');
+            const servers = document.querySelectorAll('.door-server');
+            const ids = document.querySelectorAll('.door-id');
+            const tokens = document.querySelectorAll('.door-token');
+            const pins = document.querySelectorAll('.door-pin');
 
-        <label>Durata Impulso Apertura (in secondi)</label>
-        <input type="number" class="d-duration" value="\${data.duration || 0.5}" step="0.1" min="0.1" max="60" placeholder="Es. 0.5">
-        <small>Consigliato: 0.5 o 0.3 per portoncini elettrici; 2.0 per cancelli automatici.</small>
-        
-        <button class="btn btn-danger" onclick="this.parentElement.remove()">Elimina Porta</button>
-      \`;
-      container.appendChild(div);
-    }
+            for (let i = 0; i < names.length; i++) {
+              config.doors.push({
+                name: names[i].value,
+                server: servers[i].value,
+                device_id: ids[i].value,
+                auth_key: tokens[i].value,
+                pin: pins[i].value
+              });
+            }
 
-    function generateConfig() {
-      const names = document.querySelectorAll('.d-name');
-      const servers = document.querySelectorAll('.d-server');
-      const ids = document.querySelectorAll('.d-id');
-      const keys = document.querySelectorAll('.d-key');
-      const pins = document.querySelectorAll('.d-pin');
-      const durations = document.querySelectorAll('.d-duration');
+            document.getElementById('jsonOutput').value = JSON.stringify(config, null, 2);
+            document.getElementById('outputArea').style.display = 'block';
+            document.getElementById('jsonOutput').scrollIntoView({ behavior: 'smooth' });
+          }
 
-      const config = {
-        mode: document.getElementById('mode-select').value,
-        emergency_contact: document.getElementById('contact-input').value.trim(),
-        doors: []
-      };
+          function copyToClipboard() {
+            const textarea = document.getElementById('jsonOutput');
+            textarea.select();
+            document.execCommand('copy');
+            const msg = document.getElementById('copyMsg');
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 4000);
+          }
 
-      for(let i=0; i<names.length; i++) {
-        if(names[i].value.trim()) {
-          config.doors.push({
-            name: names[i].value.trim(),
-            server: servers[i].value.trim(),
-            device_id: ids[i].value.trim(),
-            auth_key: keys[i].value.trim(),
-            pin: pins[i].value.trim(),
-            duration: parseFloat(durations[i].value) || 0.5
-          });
-        }
-      }
-
-      const jsonStr = JSON.stringify(config, null, 2);
-      document.getElementById('json-output').textContent = jsonStr;
-      document.getElementById('result-sec').style.display = 'block';
-    }
-
-    function copyConfig() {
-      const text = document.getElementById('json-output').textContent;
-      navigator.clipboard.writeText(text);
-      alert('Configurazione copiata negli appunti!');
-    }
-  </script>
-</body>
-</html>`;
-
-    return new Response(setupHtml, {
-      headers: { "Content-Type": "text/html; charset=utf-8" }
-    });
+          // Avvia con una porta di default
+          addDoor();
+        </script>
+      </body>
+      </html>`,
+      { headers: { "Content-Type": "text/html;charset=UTF-8" } }
+    );
   }
 
-  // ---------------------------------------------------------------------------
-  // 2. ROUTE POST: /open (Chiamata backend a Shelly Cloud API v2)
-  // ---------------------------------------------------------------------------
-  if (request.method === "POST" && url.pathname === "/open") {
+  // --- 2. LOGICA OPERATIVA DEL SITO (Tastierino e Apertura) ---
+  let config;
+  try {
+    config = JSON.parse(env.CONFIG);
+  } catch (e) {
+    return new Response("Nessuna configurazione trovata. Vai su /setup per generarne una e inseriscila nelle variabili di Cloudflare.", { status: 200 });
+  }
+
+  if (request.method === "POST") {
     try {
       const body = await request.json();
-      const doorIndex = parseInt(body.doorIndex);
-      const userPin = body.pin || "";
+      const { doorIndex, pin } = body;
 
-      const rawConfig = env.CONFIG;
-      if (!rawConfig) {
-        return new Response(JSON.stringify({ error: "Variabile CONFIG non presente su Cloudflare" }), { status: 500 });
-      }
-
-      const config = JSON.parse(rawConfig);
-      const door = config.doors ? config.doors[doorIndex] : null;
-
+      const door = config.doors[doorIndex];
       if (!door) {
-        return new Response(JSON.stringify({ error: "Porta non trovata" }), { status: 404 });
+        return new Response(JSON.stringify({ success: false, msg: "Porta non trovata" }), { status: 400 });
       }
 
-      // Verifica del PIN
-      if (door.pin && door.pin !== userPin) {
-        return new Response(JSON.stringify({ error: "PIN errato" }), { status: 403 });
+      if (door.pin && door.pin !== "" && pin !== door.pin) {
+        return new Response(JSON.stringify({ success: false, msg: "PIN errato ❌" }), {
+          headers: { "Content-Type": "application/json" }
+        });
       }
 
-      const durationSeconds = door.duration ? parseFloat(door.duration) : 0.5;
+      const shellyResponse = await fetch(
+        `https://${door.server}/v2/devices/api/set/switch?auth_key=${door.auth_key}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: door.device_id,
+            channel: 0,
+            on: true,
+            toggle_after: 5
+          })
+        }
+      );
 
-      // Normalizzazione del Dominio Server
-      let host = door.server.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
-      if (!host.includes(".")) {
-        host = `${host}.shelly.cloud`;
+      if (shellyResponse.ok) {
+        return new Response(JSON.stringify({ success: true, msg: `${door.name} aperta! ✅` }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      } else {
+        return new Response(JSON.stringify({ success: false, msg: "Errore Shelly" }), {
+          headers: { "Content-Type": "application/json" }
+        });
       }
-
-      const cleanAuthKey = door.auth_key.trim();
-      const cleanDeviceId = door.device_id.trim();
-
-      // Invio richiesta alle API Cloud v2 di Shelly con parametri ufficiali
-      const shellyApiUrl = `https://${host}/v2/devices/api/set/switch?auth_key=${encodeURIComponent(cleanAuthKey)}`;
-      
-      const shellyResponse = await fetch(shellyApiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${cleanAuthKey}`
-        },
-        body: JSON.stringify({
-          id: cleanDeviceId,
-          channel: 0,
-          on: true,
-          auto_off: durationSeconds
-        })
-      });
-
-      const resText = await shellyResponse.text();
-
-      if (!shellyResponse.ok) {
-        return new Response(JSON.stringify({ error: `Shelly Error (${shellyResponse.status}): ${resText}` }), { status: 502 });
-      }
-
-      return new Response(JSON.stringify({ success: true }), {
+    } catch (err) {
+      return new Response(JSON.stringify({ success: false, msg: "Errore di rete" }), {
         headers: { "Content-Type": "application/json" }
       });
-
-    } catch (e) {
-      return new Response(JSON.stringify({ error: `Errore interno: ${e.message}` }), { status: 500 });
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // 3. ROUTE GET: / (Tastierino Ingressi)
-  // ---------------------------------------------------------------------------
-  const rawConfig = env.CONFIG || '{"mode":"free","doors":[],"emergency_contact":""}';
-  let configData = {};
-  try { configData = JSON.parse(rawConfig); } catch(e){}
+  const safeConfig = {
+    mode: config.mode || "sequence",
+    emergency_contact: config.emergency_contact || "",
+    doors: config.doors.map(d => ({ name: d.name, requiresPin: !!d.pin }))
+  };
 
-  const mainHtml = `<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Apertura Porte</title>
-  <style>
-    :root { --primary: #10b981; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; box-sizing: border-box; }
-    .container { max-width: 400px; width: 100%; background: var(--card); padding: 24px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); text-align: center; }
-    .logo { max-width: 120px; margin-bottom: 20px; }
-    h1 { font-size: 1.5rem; margin-bottom: 20px; color: #ffffff; }
-    .btn-door { background: #2563eb; color: white; border: none; padding: 16px; border-radius: 10px; font-size: 1.1rem; font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 12px; transition: background 0.2s, transform 0.1s; }
-    .btn-door:active { transform: scale(0.98); }
-    .btn-door.success { background: #10b981; }
-    .btn-door.error { background: #ef4444; }
-    .pin-input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; text-align: center; font-size: 1.2rem; box-sizing: border-box; }
-    .emergency { margin-top: 20px; display: inline-block; color: #94a3b8; text-decoration: none; font-size: 0.9rem; }
-    .status { margin-top: 10px; font-size: 0.85rem; word-break: break-word; min-height: 20px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <img src="/logo.png" alt="Logo" class="logo" onerror="this.style.display='none'">
-    <h1>Apertura Ingressi</h1>
+  return new Response(
+    `<!DOCTYPE html>
+    <html lang="it">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Apertura Smart</title>
+      <style>
+        body { font-family: -apple-system, sans-serif; display:flex; align-items:center;
+               justify-content:center; min-height:100vh; margin:0; background:#f4f4f5; padding:1rem; box-sizing:border-box; }
+        .box { text-align:center; padding:2rem 2.5rem; border-radius:12px; background:white;
+               box-shadow:0 2px 10px rgba(0,0,0,0.08); width:280px; }
+        .logo { max-width: 120px; height: auto; margin-bottom: 1.5rem; display: block; margin-left: auto; margin-right: auto; }
+        h1 { color:#27272a; font-size:1.2rem; margin:0; margin-bottom:1.5rem; }
+        input { width:100%; box-sizing:border-box; padding:0.75rem; font-size:1.3rem;
+               text-align:center; letter-spacing:0.2rem; border:1px solid #d4d4d8;
+               border-radius:8px; margin-bottom:0.75rem; outline:none; }
+        button { width:100%; padding:0.75rem; font-size:1rem; font-weight:600; color:white;
+                 background:#16a34a; border:none; border-radius:8px; cursor:pointer; margin-bottom:0.5rem; }
+        button:disabled { background:#a1a1aa; }
+        .btn-choice { background: #2563eb; }
+        #statusMessage { margin-top: 1rem; font-weight: 600; font-size: 1.1rem; min-height: 24px; }
+        .emergency { margin-top: 2rem; border-top: 1px solid #e4e4e7; padding-top: 1rem; }
+        .emergency a { color: #dc2626; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+      </style>
+    </head>
+    <body>
+      <div class="box">
+        <img src="/logo.png" id="logoImg" class="logo" onerror="this.style.display='none'">
+        <h1 id="title">Inizializzazione...</h1>
+        <div id="actionArea"></div>
+        <div id="statusMessage"></div>
+        <div id="emergencySection" class="emergency" style="display:none;">
+          <a id="emergencyLink" href="#">📞 Serve aiuto? Chiama l'assistenza</a>
+        </div>
+      </div>
 
-    <div id="doors-list"></div>
-    <div id="status" class="status"></div>
+      <script>
+        const config = ${JSON.stringify(safeConfig)};
+        let currentStep = 0;
 
-    ${configData.emergency_contact ? `<a href="tel:${configData.emergency_contact}" class="emergency">📞 Chiama Assistenza</a>` : ''}
-  </div>
-
-  <script>
-    const config = ${JSON.stringify(configData)};
-
-    function renderUI() {
-      const list = document.getElementById('doors-list');
-      list.innerHTML = '';
-
-      if (!config.doors || config.doors.length === 0) {
-        list.innerHTML = '<p style="color:#94a3b8;">Nessun ingresso configurato. Vai su /setup per iniziare.</p>';
-        return;
-      }
-
-      config.doors.forEach((door, idx) => {
-        const div = document.createElement('div');
-        div.style.marginBottom = "16px";
-        
-        let pinHtml = '';
-        if (door.pin) {
-          pinHtml = \`<input type="password" id="pin-\${idx}" class="pin-input" placeholder="Inserisci PIN" maxlength="10">\`;
+        function init() {
+          if (config.emergency_contact) {
+            const section = document.getElementById('emergencySection');
+            const link = document.getElementById('emergencyLink');
+            link.href = 'tel:' + config.emergency_contact;
+            section.style.display = 'block';
+          }
+          if (config.mode === "sequence") {
+            loadSequenceStep();
+          } else {
+            loadChoiceMenu();
+          }
         }
 
-        div.innerHTML = \`
-          \${pinHtml}
-          <button class="btn-door" id="btn-\${idx}" onclick="openDoor(\${idx})">Apri \${door.name}</button>
-        \`;
-        list.appendChild(div);
-      });
-    }
-
-    async function openDoor(idx) {
-      const btn = document.getElementById(\`btn-\${idx}\`);
-      const status = document.getElementById('status');
-      const pinInput = document.getElementById(\`pin-\${idx}\`);
-      const pin = pinInput ? pinInput.value : '';
-
-      const originalText = btn.textContent;
-      btn.textContent = "Invio comando...";
-      btn.disabled = true;
-      status.textContent = "";
-
-      try {
-        const res = await fetch('/open', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ doorIndex: idx, pin: pin })
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.success) {
-          btn.textContent = "Aperto! ✓";
-          btn.classList.add('success');
-          if(pinInput) pinInput.value = '';
-        } else {
-          btn.textContent = "Errore!";
-          btn.classList.add('error');
-          status.style.color = "#ef4444";
-          status.textContent = data.error || "Impossibile aprire";
+        function loadChoiceMenu() {
+          document.getElementById('title').innerText = "Seleziona cosa aprire";
+          const area = document.getElementById('actionArea');
+          area.innerHTML = "";
+          config.doors.forEach((door, index) => {
+            const btn = document.createElement('button');
+            btn.className = "btn-choice";
+            btn.innerText = door.name;
+            btn.onclick = () => {
+              if (door.requiresPin) {
+                showPinScreen(index, true);
+              } else {
+                eseguiApertura(index, "");
+              }
+            };
+            area.appendChild(btn);
+          });
         }
-      } catch (e) {
-        btn.textContent = "Errore!";
-        btn.classList.add('error');
-        status.style.color = "#ef4444";
-        status.textContent = "Errore di connessione al server";
-      }
 
-      setTimeout(() => {
-        btn.textContent = originalText;
-        btn.classList.remove('success', 'error');
-        btn.disabled = false;
-        status.textContent = "";
-      }, 4000);
-    }
+        function loadSequenceStep() {
+          if (currentStep >= config.doors.length) {
+            document.getElementById('title').innerText = "Tutto aperto! Benvenuto";
+            document.getElementById('actionArea').innerHTML = "";
+            return;
+          }
+          const door = config.doors[currentStep];
+          if (door.requiresPin) {
+            showPinScreen(currentStep, false);
+          } else {
+            document.getElementById('title').innerText = door.name;
+            const area = document.getElementById('actionArea');
+            area.innerHTML = \`<button onclick="eseguiApertura(\${currentStep}, '')">Apri ora</button>\`;
+          }
+        }
 
-    renderUI();
-  </script>
-</body>
-</html>`;
+        function showPinScreen(doorIndex, fallbackToMenu) {
+          const door = config.doors[doorIndex];
+          document.getElementById('title').innerText = "Inserisci PIN per " + door.name;
+          const area = document.getElementById('actionArea');
+          area.innerHTML = \`
+            <input type="password" id="pinCode" inputmode="numeric" pattern="[0-9]*" maxlength="6" autofocus placeholder="••••">
+            <button id="btnInvia">Verifica e Apri</button>
+          \`;
+          if (fallbackToMenu) {
+            area.innerHTML += \`<button style="background:#71717a; margin-top:0.5rem;" onclick="loadChoiceMenu()">Indietro</button>\`;
+          }
+          document.getElementById('btnInvia').onclick = () => {
+            const pin = document.getElementById('pinCode').value;
+            eseguiApertura(doorIndex, pin, fallbackToMenu);
+          };
+        }
 
-  return new Response(mainHtml, {
-    headers: { "Content-Type": "text/html; charset=utf-8" }
-  });
+        async function eseguiApertura(doorIndex, pin, fallbackToMenu = false) {
+          const statusDiv = document.getElementById('statusMessage');
+          statusDiv.style.color = "#71717a";
+          statusDiv.innerText = "Apertura in corso...";
+          try {
+            const res = await fetch(window.location.pathname, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ doorIndex, pin })
+            });
+            const data = await res.json();
+            if (data.success) {
+              statusDiv.style.color = "#16a34a";
+              statusDiv.innerText = data.msg;
+              if (config.mode === "sequence") {
+                currentStep++;
+                setTimeout(() => {
+                  statusDiv.innerText = "";
+                  loadSequenceStep();
+                }, 2000);
+              } else {
+                setTimeout(() => {
+                  statusDiv.innerText = "";
+                  loadChoiceMenu();
+                }, 3000);
+              }
+            } else {
+              statusDiv.style.color = "#dc2626";
+              statusDiv.innerText = data.msg;
+              if (document.getElementById('pinCode')) {
+                document.getElementById('pinCode').value = "";
+                document.getElementById('pinCode').focus();
+              }
+            }
+          } catch (err) {
+            statusDiv.style.color = "#dc2626";
+            statusDiv.innerText = "Errore di connessione.";
+          }
+        }
+
+        window.onload = init;
+      </script>
+    </body>
+    </html>`,
+    { headers: { "Content-Type": "text/html;charset=UTF-8" } }
+  );
 }
