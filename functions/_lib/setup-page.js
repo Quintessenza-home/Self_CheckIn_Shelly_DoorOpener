@@ -1,7 +1,12 @@
 // functions/_lib/setup-page.js
 // Pagina di login e pannello di configurazione.
+//
+// L'interfaccia del pannello è in italiano (è la pagina del proprietario);
+// i contenuti destinati agli ospiti — nomi porte e istruzioni — sono invece
+// campi localizzati compilabili in ogni lingua attivata.
 
 import { BASE_STYLES, escapeHtml, jsonForScript } from "./html.js";
+import { LANGUAGES, LANGUAGE_LABELS } from "./i18n.js";
 
 const SETUP_STYLES = `
   body { padding: 2rem 1rem 6rem; }
@@ -27,11 +32,26 @@ const SETUP_STYLES = `
   .section { margin-bottom: 1.5rem; background: var(--section-bg); padding: 1.25rem; border-radius: 10px; border: 2px solid var(--border); }
   .section-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
   .section-title .count { font-size: 0.8rem; font-weight: 700; color: var(--text-subtle); }
+  .section-intro { font-size: 0.82rem; color: var(--text-subtle); line-height: 1.5; margin: -0.5rem 0 1rem; }
   .field { margin-bottom: 1rem; }
   .field:last-child { margin-bottom: 0; }
   .hint { font-size: 0.78rem; color: var(--text-subtle); margin: 0.35rem 0 0; line-height: 1.4; }
+  .hint code, .section-intro code { background: rgba(0,0,0,0.06); padding: 0.05rem 0.3rem; border-radius: 4px; }
   .row { display: flex; gap: 0.75rem; }
   .row > * { flex: 1; min-width: 0; }
+  .loc-row { display: flex; gap: 0.5rem; align-items: flex-start; margin-bottom: 0.5rem; }
+  .loc-row:last-child { margin-bottom: 0; }
+  .loc-tag {
+    flex: 0 0 2rem; padding-top: 0.85rem; font-size: 0.7rem; font-weight: 700;
+    color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .loc-row textarea { resize: vertical; min-height: 4.5rem; line-height: 1.5; }
+  .lang-picker { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-bottom: 0.35rem; }
+  .lang-picker label {
+    display: flex; align-items: center; gap: 0.45rem; text-transform: none;
+    letter-spacing: 0; font-size: 0.95rem; color: var(--text-main); margin: 0; cursor: pointer;
+  }
+  .lang-picker input { width: auto; padding: 0; margin: 0; accent-color: var(--border-dark); }
   .door { background: var(--card-bg); border: 2px solid var(--border-dark); border-radius: 10px; padding: 1.1rem; margin-bottom: 1rem; }
   .door-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
   .door-head .title { font-weight: 800; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -83,6 +103,7 @@ export function renderLoginPage({ actionPath, error }) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
   <title>Accesso Limitato</title>
   <style>
     ${BASE_STYLES}
@@ -141,12 +162,22 @@ function renderBanner(storage) {
   </div>`;
 }
 
+function renderLanguageCheckboxes() {
+  return LANGUAGES.map(
+    (code) => `<label for="lang_${code}">
+      <input type="checkbox" id="lang_${code}" data-lang="${code}">
+      ${escapeHtml(LANGUAGE_LABELS[code])}
+    </label>`
+  ).join("");
+}
+
 export function renderSetupPage({ config, storage, actionPath }) {
   return `<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
   <title>Configuratore Smart</title>
   <style>${BASE_STYLES}${SETUP_STYLES}</style>
 </head>
@@ -173,14 +204,57 @@ export function renderSetupPage({ config, storage, actionPath }) {
           </select>
         </div>
         <div class="field">
+          <label>Lingue del sito</label>
+          <div class="lang-picker">${renderLanguageCheckboxes()}</div>
+          <p class="hint">
+            L'ospite vede un selettore di lingua e il sito parte nella lingua del suo telefono.
+            Testi dei pulsanti e messaggi sono già tradotti; nomi e istruzioni li scrivi tu qui sotto.
+          </p>
+        </div>
+        <div class="field">
+          <label for="defaultLanguage">Lingua predefinita</label>
+          <select id="defaultLanguage"></select>
+          <p class="hint">Usata quando la lingua del telefono non è fra quelle attivate, e come testo di ricaduta.</p>
+        </div>
+        <div class="field">
           <label for="emergency">Telefono Assistenza (Opzionale)</label>
           <input type="tel" id="emergency" placeholder="Es. +393331234567">
         </div>
       </div>
 
       <div class="section">
+        <div class="section-title">Codice di Accesso</div>
+        <p class="section-intro">
+          Se lo imposti, all'apertura del sito viene chiesto <strong>prima di mostrare le porte</strong>:
+          chi non ha il codice non vede nemmeno quali ingressi esistono. Comunicalo all'ospite
+          insieme al link. Lascia vuoto per lasciare il sito libero.
+        </p>
+        <div class="field">
+          <label for="accessPin">Codice richiesto all'ingresso (Opzionale)</label>
+          <div class="with-toggle">
+            <input type="password" id="accessPin" placeholder="Es. 481902" autocomplete="off"
+                   inputmode="numeric">
+            <button type="button" class="peek" data-peek="accessPin">Mostra</button>
+          </div>
+          <p class="hint">
+            Da 4 a 12 cifre. Consigliate almeno 6: è un deterrente da cassetta di sicurezza,
+            non una password. La sessione dell'ospite dura 12 ore.
+          </p>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Istruzioni per gli Ospiti</div>
+        <p class="section-intro">
+          Testo mostrato nella pagina di apertura. Usalo per spiegare dove si trovano gli
+          ingressi o come funziona il citofono. Puoi lasciarlo vuoto.
+        </p>
+        <div id="generalInstructions"></div>
+      </div>
+
+      <div class="section">
         <div class="section-title">Account Shelly Condiviso</div>
-        <p class="hint" style="margin-top:-0.5rem; margin-bottom:1rem;">
+        <p class="section-intro">
           Inserisci qui server e Auth Key una volta sola: tutte le porte li useranno.
           Per aggiungere un dispositivo basteranno nome e Device ID.
         </p>
@@ -203,6 +277,12 @@ export function renderSetupPage({ config, storage, actionPath }) {
           <span>Porte e Dispositivi</span>
           <span class="count" id="doorCount"></span>
         </div>
+        <p class="section-intro">
+          Una voce per ogni apertura che l'ospite deve poter comandare. Se lo stesso pulsante
+          Shelly apre più cancelli a seconda del citofono da cui si suona, crea
+          <strong>una porta per ogni cancello con lo stesso Device ID</strong> (il pulsante ⧉ duplica
+          mantenendolo) e spiega nelle istruzioni da quale citofono suonare.
+        </p>
         <div id="doors"></div>
         <button type="button" class="btn-add" id="addDoor">＋ Aggiungi Porta</button>
       </div>
@@ -236,6 +316,8 @@ export function renderSetupPage({ config, storage, actionPath }) {
     var state = ${jsonForScript(config)};
     var storage = ${jsonForScript(storage)};
     var endpoint = ${jsonForScript(actionPath)};
+    var LANGS = ${jsonForScript(LANGUAGES)};
+    var LANG_LABELS = ${jsonForScript(LANGUAGE_LABELS)};
     var dirty = false;
 
     function h(tag, attrs, text) {
@@ -248,6 +330,23 @@ export function renderSetupPage({ config, storage, actionPath }) {
       }
       if (text != null) node.textContent = text;
       return node;
+    }
+
+    function emptyText() {
+      var value = {};
+      LANGS.forEach(function (code) { value[code] = ''; });
+      return value;
+    }
+
+    /** Primo testo disponibile, partendo dalla lingua predefinita. */
+    function textOf(field) {
+      if (!field) return '';
+      if (typeof field === 'string') return field;
+      var order = [state.default_language].concat(LANGS);
+      for (var i = 0; i < order.length; i++) {
+        if (field[order[i]] && field[order[i]].trim()) return field[order[i]].trim();
+      }
+      return '';
     }
 
     function setStatus(text, kind) {
@@ -270,14 +369,14 @@ export function renderSetupPage({ config, storage, actionPath }) {
     function newDoor() {
       return {
         id: 'door_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e6).toString(36),
-        name: '', server: '', device_id: '', auth_key: '', pin: ''
+        name: emptyText(), instructions: emptyText(),
+        server: '', device_id: '', auth_key: '', pin: ''
       };
     }
 
     function field(labelText, control, hintText) {
       var wrap = h('div', { class: 'field' });
-      var label = h('label', {}, labelText);
-      wrap.appendChild(label);
+      wrap.appendChild(h('label', {}, labelText));
       wrap.appendChild(control);
       if (hintText) wrap.appendChild(h('p', { class: 'hint' }, hintText));
       return wrap;
@@ -308,6 +407,41 @@ export function renderSetupPage({ config, storage, actionPath }) {
       return wrap;
     }
 
+    /** Campo con una riga per ogni lingua attiva (nomi, istruzioni). */
+    function localizedField(labelText, target, options) {
+      options = options || {};
+      var wrap = h('div', { class: 'field' });
+      wrap.appendChild(h('label', {}, labelText));
+
+      state.languages.forEach(function (code) {
+        var row = h('div', { class: 'loc-row' });
+        if (state.languages.length > 1) row.appendChild(h('span', { class: 'loc-tag' }, code));
+
+        var control;
+        if (options.multiline) {
+          control = document.createElement('textarea');
+          control.rows = options.rows || 3;
+        } else {
+          control = document.createElement('input');
+          control.type = 'text';
+          control.autocomplete = 'off';
+        }
+        control.value = target[code] || '';
+        control.placeholder = (options.placeholders && options.placeholders[code]) || '';
+        control.addEventListener('input', function () {
+          target[code] = control.value;
+          markDirty();
+          if (options.onInput) options.onInput();
+        });
+
+        row.appendChild(control);
+        wrap.appendChild(row);
+      });
+
+      if (options.hint) wrap.appendChild(h('p', { class: 'hint' }, options.hint));
+      return wrap;
+    }
+
     function move(index, delta) {
       var target = index + delta;
       if (target < 0 || target >= state.doors.length) return;
@@ -320,8 +454,13 @@ export function renderSetupPage({ config, storage, actionPath }) {
     function doorCard(door, index) {
       var card = h('div', { class: 'door' });
 
+      function headingText() {
+        var name = textOf(door.name);
+        return 'Porta #' + (index + 1) + (name ? ' · ' + name : '');
+      }
+
       var head = h('div', { class: 'door-head' });
-      head.appendChild(h('span', { class: 'title' }, 'Porta #' + (index + 1) + (door.name ? ' · ' + door.name : '')));
+      head.appendChild(h('span', { class: 'title' }, headingText()));
 
       var tools = h('div', { class: 'door-tools' });
       var up = h('button', { type: 'button', class: 'icon-btn', title: 'Sposta su' }, '↑');
@@ -332,12 +471,19 @@ export function renderSetupPage({ config, storage, actionPath }) {
       down.disabled = index === state.doors.length - 1;
       down.addEventListener('click', function () { move(index, 1); });
 
-      var clone = h('button', { type: 'button', class: 'icon-btn', title: 'Duplica' }, '⧉');
+      var clone = h('button', {
+        type: 'button', class: 'icon-btn',
+        title: 'Duplica (stesso dispositivo, istruzioni diverse)'
+      }, '⧉');
       clone.addEventListener('click', function () {
+        // Il Device ID viene mantenuto: è il caso di un solo pulsante che apre
+        // più cancelli a seconda del citofono da cui si è suonato.
         var copy = JSON.parse(JSON.stringify(door));
         copy.id = newDoor().id;
-        copy.name = (door.name || 'Porta') + ' (copia)';
-        copy.device_id = '';
+        // Nome marcato come copia, così si vede subito quale va rinominata.
+        LANGS.forEach(function (code) {
+          if (copy.name[code]) copy.name[code] = copy.name[code] + ' (copia)';
+        });
         state.doors.splice(index + 1, 0, copy);
         markDirty();
         renderDoors();
@@ -345,8 +491,8 @@ export function renderSetupPage({ config, storage, actionPath }) {
 
       var remove = h('button', { type: 'button', class: 'icon-btn danger', title: 'Rimuovi' }, '✕');
       remove.addEventListener('click', function () {
-        if (door.name || door.device_id) {
-          if (!confirm('Rimuovere "' + (door.name || 'questa porta') + '"?')) return;
+        if (textOf(door.name) || door.device_id) {
+          if (!confirm('Rimuovere "' + (textOf(door.name) || 'questa porta') + '"?')) return;
         }
         state.doors.splice(index, 1);
         markDirty();
@@ -360,22 +506,31 @@ export function renderSetupPage({ config, storage, actionPath }) {
       head.appendChild(tools);
       card.appendChild(head);
 
-      var nameInput = input(door.name, 'Es. Portone Esterno', function (value) {
-        door.name = value;
-        head.querySelector('.title').textContent = 'Porta #' + (index + 1) + (value ? ' · ' + value : '');
-      });
-      card.appendChild(field('Nome identificativo', nameInput));
+      card.appendChild(localizedField('Nome identificativo', door.name, {
+        placeholders: { it: 'Es. Cancello Esterno', en: 'Es. Outer Gate' },
+        onInput: function () { head.querySelector('.title').textContent = headingText(); }
+      }));
+
+      card.appendChild(localizedField('Istruzioni per questa apertura (opzionale)', door.instructions, {
+        multiline: true,
+        placeholders: {
+          it: 'Es. Suona dal citofono esterno, poi premi Apri ora.',
+          en: 'Es. Ring the outside intercom, then press Open now.'
+        },
+        hint: 'Mostrate all\\'ospite subito prima del pulsante di apertura.'
+      }));
 
       card.appendChild(field(
         'Shelly Device ID',
         input(door.device_id, 'Es. 34845d62a12c', function (value) { door.device_id = value; }),
-        'Lo trovi nell\\'app Shelly: Impostazioni dispositivo → Device Information.'
+        'Lo trovi nell\\'app Shelly: Impostazioni dispositivo → Device Information. ' +
+        'Più porte possono condividere lo stesso Device ID.'
       ));
 
       card.appendChild(field(
         'PIN di sblocco (Opzionale)',
         input(door.pin, 'Es. 1234', function (value) { door.pin = value; }, 'text', 'numeric'),
-        'Lascia vuoto per aprire senza codice. Da 3 a 10 cifre.'
+        'PIN della singola porta, in aggiunta al codice di accesso al sito. Da 3 a 10 cifre.'
       ));
 
       var advanced = h('details', { class: 'advanced' });
@@ -404,7 +559,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
         api({
           action: 'test',
           door: {
-            name: door.name || 'Porta',
+            name: textOf(door.name) || 'Porta',
             server: door.server || state.shelly.server,
             device_id: door.device_id,
             auth_key: door.auth_key || state.shelly.auth_key
@@ -440,6 +595,50 @@ export function renderSetupPage({ config, storage, actionPath }) {
       refreshJsonBox();
     }
 
+    function renderGeneralInstructions() {
+      var container = document.getElementById('generalInstructions');
+      container.innerHTML = '';
+      container.appendChild(localizedField('Istruzioni generali (opzionale)', state.instructions, {
+        multiline: true,
+        rows: 4,
+        placeholders: {
+          it: 'Es. Gli ingressi sono in via Roma 10, sulla destra del portone verde.',
+          en: 'Es. The entrances are at via Roma 10, to the right of the green door.'
+        }
+      }));
+    }
+
+    function renderLanguageControls() {
+      LANGS.forEach(function (code) {
+        var box = document.getElementById('lang_' + code);
+        box.checked = state.languages.indexOf(code) !== -1;
+      });
+      var select = document.getElementById('defaultLanguage');
+      select.innerHTML = '';
+      state.languages.forEach(function (code) {
+        var option = h('option', { value: code }, LANG_LABELS[code]);
+        select.appendChild(option);
+      });
+      select.value = state.default_language;
+    }
+
+    function onLanguageToggle() {
+      var next = LANGS.filter(function (code) {
+        return document.getElementById('lang_' + code).checked;
+      });
+      if (!next.length) {
+        // Almeno una lingua deve restare attiva.
+        document.getElementById('lang_' + state.languages[0]).checked = true;
+        return;
+      }
+      state.languages = next;
+      if (next.indexOf(state.default_language) === -1) state.default_language = next[0];
+      markDirty();
+      renderLanguageControls();
+      renderGeneralInstructions();
+      renderDoors();
+    }
+
     function api(payload) {
       return fetch(endpoint, {
         method: 'POST',
@@ -462,8 +661,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
         if (data.ok) {
           dirty = false;
           state = data.config || state;
-          renderDoors();
-          syncGeneralFields();
+          renderAll();
           setStatus(data.msg || 'Configurazione salvata ✅', 'ok');
         } else {
           setStatus(data.msg || 'Salvataggio non riuscito', 'err');
@@ -476,8 +674,16 @@ export function renderSetupPage({ config, storage, actionPath }) {
     function syncGeneralFields() {
       document.getElementById('mode').value = state.mode;
       document.getElementById('emergency').value = state.emergency_contact || '';
+      document.getElementById('accessPin').value = state.access_pin || '';
       document.getElementById('sharedServer').value = state.shelly.server || '';
       document.getElementById('sharedKey').value = state.shelly.auth_key || '';
+    }
+
+    function renderAll() {
+      syncGeneralFields();
+      renderLanguageControls();
+      renderGeneralInstructions();
+      renderDoors();
     }
 
     function bindGeneralFields() {
@@ -485,8 +691,16 @@ export function renderSetupPage({ config, storage, actionPath }) {
         state.mode = event.target.value;
         markDirty();
       });
+      document.getElementById('defaultLanguage').addEventListener('change', function (event) {
+        state.default_language = event.target.value;
+        markDirty();
+      });
       document.getElementById('emergency').addEventListener('input', function (event) {
         state.emergency_contact = event.target.value;
+        markDirty();
+      });
+      document.getElementById('accessPin').addEventListener('input', function (event) {
+        state.access_pin = event.target.value;
         markDirty();
       });
       document.getElementById('sharedServer').addEventListener('input', function (event) {
@@ -497,6 +711,9 @@ export function renderSetupPage({ config, storage, actionPath }) {
         state.shelly.auth_key = event.target.value;
         markDirty();
       });
+      LANGS.forEach(function (code) {
+        document.getElementById('lang_' + code).addEventListener('change', onLanguageToggle);
+      });
       document.querySelectorAll('[data-peek]').forEach(function (button) {
         button.addEventListener('click', function () {
           var target = document.getElementById(button.getAttribute('data-peek'));
@@ -505,6 +722,19 @@ export function renderSetupPage({ config, storage, actionPath }) {
           button.textContent = hidden ? 'Nascondi' : 'Mostra';
         });
       });
+    }
+
+    /** Porta un testo importato nel formato localizzato { it, en }. */
+    function importText(raw, defaultLanguage) {
+      var value = emptyText();
+      if (raw && typeof raw === 'object') {
+        LANGS.forEach(function (code) {
+          if (typeof raw[code] === 'string') value[code] = raw[code];
+        });
+      } else if (typeof raw === 'string' && raw) {
+        value[defaultLanguage] = raw;
+      }
+      return value;
     }
 
     function bindAdvanced() {
@@ -519,9 +749,22 @@ export function renderSetupPage({ config, storage, actionPath }) {
         try {
           var parsed = JSON.parse(document.getElementById('jsonBox').value);
           if (!parsed || typeof parsed !== 'object') throw new Error('formato non valido');
+
+          var languages = Array.isArray(parsed.languages)
+            ? parsed.languages.filter(function (code) { return LANGS.indexOf(code) !== -1; })
+            : [];
+          if (!languages.length) languages = LANGS.slice();
+          var defaultLanguage = LANGS.indexOf(parsed.default_language) !== -1
+            ? parsed.default_language : languages[0];
+          if (languages.indexOf(defaultLanguage) === -1) defaultLanguage = languages[0];
+
           state = {
             mode: parsed.mode === 'choice' ? 'choice' : 'sequence',
+            languages: languages,
+            default_language: defaultLanguage,
             emergency_contact: parsed.emergency_contact || '',
+            access_pin: parsed.access_pin || '',
+            instructions: importText(parsed.instructions, defaultLanguage),
             shelly: {
               server: (parsed.shelly && parsed.shelly.server) || parsed.server || '',
               auth_key: (parsed.shelly && parsed.shelly.auth_key) || parsed.auth_key || ''
@@ -529,7 +772,8 @@ export function renderSetupPage({ config, storage, actionPath }) {
             doors: (Array.isArray(parsed.doors) ? parsed.doors : []).map(function (door, index) {
               return {
                 id: door.id || 'imported_' + index,
-                name: door.name || '',
+                name: importText(door.name, defaultLanguage),
+                instructions: importText(door.instructions, defaultLanguage),
                 server: door.server || '',
                 device_id: door.device_id || door.deviceId || '',
                 auth_key: door.auth_key || door.authKey || '',
@@ -537,8 +781,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
               };
             })
           };
-          syncGeneralFields();
-          renderDoors();
+          renderAll();
           markDirty();
           message.textContent = 'Configurazione importata: controllala e premi "Salva configurazione".';
         } catch (error) {
@@ -555,7 +798,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
       var last = cards[cards.length - 1];
       if (last) {
         last.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        var firstInput = last.querySelector('input');
+        var firstInput = last.querySelector('input, textarea');
         if (firstInput) firstInput.focus();
       }
     });
@@ -570,8 +813,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
 
     bindGeneralFields();
     bindAdvanced();
-    syncGeneralFields();
-    renderDoors();
+    renderAll();
     if (!storage.writable) {
       document.getElementById('saveBtn').disabled = true;
       setStatus('Collega un namespace KV per salvare', 'err');

@@ -9,6 +9,7 @@
 // la configurazione viene migrata automaticamente dentro KV.
 
 import { normalizeShellyServer } from "./shelly.js";
+import { LANGUAGES, DEFAULT_LANGUAGE, isLanguage } from "./i18n.js";
 
 export const CONFIG_KEY = "config";
 
@@ -57,10 +58,41 @@ function newDoorId() {
 export function emptyConfig() {
   return {
     mode: "sequence",
+    languages: [...LANGUAGES],
+    default_language: DEFAULT_LANGUAGE,
     emergency_contact: "",
+    access_pin: "",
+    instructions: emptyText(),
     shelly: { server: "", auth_key: "" },
     doors: [],
   };
+}
+
+function emptyText() {
+  const value = {};
+  for (const code of LANGUAGES) value[code] = "";
+  return value;
+}
+
+/**
+ * Normalizza un campo di testo localizzato.
+ * Una stringa semplice (formato precedente) finisce nella lingua predefinita.
+ */
+function localizedText(raw, defaultLanguage) {
+  const value = emptyText();
+  if (raw && typeof raw === "object") {
+    for (const code of LANGUAGES) {
+      if (typeof raw[code] === "string") value[code] = raw[code].trim();
+    }
+    return value;
+  }
+  const plain = str(raw);
+  if (plain) value[isLanguage(defaultLanguage) ? defaultLanguage : DEFAULT_LANGUAGE] = plain;
+  return value;
+}
+
+function hasText(field) {
+  return LANGUAGES.some((code) => field[code]);
 }
 
 /**
@@ -72,7 +104,18 @@ export function normalizeConfig(raw) {
   if (!raw || typeof raw !== "object") return config;
 
   config.mode = raw.mode === "choice" ? "choice" : "sequence";
+
+  config.default_language = isLanguage(raw.default_language) ? raw.default_language : DEFAULT_LANGUAGE;
+  const requested = Array.isArray(raw.languages) ? raw.languages.filter(isLanguage) : null;
+  config.languages = requested && requested.length ? [...new Set(requested)] : [...LANGUAGES];
+  // La lingua predefinita deve essere fra quelle attive.
+  if (!config.languages.includes(config.default_language)) {
+    config.default_language = config.languages[0];
+  }
+
   config.emergency_contact = str(raw.emergency_contact);
+  config.access_pin = str(raw.access_pin);
+  config.instructions = localizedText(raw.instructions, config.default_language);
 
   const shared = raw.shelly && typeof raw.shelly === "object" ? raw.shelly : {};
   config.shelly.server = str(shared.server ?? raw.server);
@@ -81,9 +124,10 @@ export function normalizeConfig(raw) {
   const doors = Array.isArray(raw.doors) ? raw.doors : [];
   config.doors = doors
     .filter((door) => door && typeof door === "object")
-    .map((door, index) => ({
+    .map((door) => ({
       id: str(door.id) || newDoorId(),
-      name: str(door.name) || `Porta ${index + 1}`,
+      name: localizedText(door.name, config.default_language),
+      instructions: localizedText(door.instructions, config.default_language),
       server: str(door.server),
       device_id: str(door.device_id ?? door.deviceId),
       auth_key: str(door.auth_key ?? door.authKey),
@@ -131,10 +175,17 @@ export function validateConfig(config) {
   if (!Array.isArray(config.doors) || config.doors.length === 0) {
     errors.push("Aggiungi almeno una porta.");
   }
+  if (config.access_pin && !/^[0-9]{4,12}$/.test(config.access_pin)) {
+    errors.push("Il codice di accesso deve contenere da 4 a 12 cifre.");
+  }
   config.doors.forEach((door, index) => {
     const position = `Porta #${index + 1}`;
     const resolved = resolveDoor(config, door);
-    if (!door.name) errors.push(`${position}: manca il nome.`);
+    if (!hasText(door.name)) errors.push(`${position}: manca il nome.`);
+    else if (!door.name[config.default_language]) {
+      const label = config.default_language === "it" ? "italiano" : "inglese";
+      errors.push(`${position}: manca il nome in ${label} (lingua predefinita).`);
+    }
     if (!resolved.device_id) errors.push(`${position}: manca il Device ID.`);
     if (!resolved.server) errors.push(`${position}: manca il server Shelly.`);
     else if (!normalizeShellyServer(resolved.server)) {

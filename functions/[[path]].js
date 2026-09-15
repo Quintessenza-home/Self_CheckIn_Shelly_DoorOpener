@@ -7,7 +7,9 @@ import { htmlResponse, jsonResponse } from "./_lib/html.js";
 import { loadConfig, saveConfig, normalizeConfig, validateConfig, resolveDoor } from "./_lib/store.js";
 import {
   isAuthenticated, createSessionToken, sessionCookie, clearSessionCookie, safeEqual,
+  createGuestToken, guestCookie, hasGuestAccess,
 } from "./_lib/auth.js";
+import { STRINGS, LANGUAGE_LABELS, resolveLanguage, pickText, t } from "./_lib/i18n.js";
 import { openDoor } from "./_lib/shelly.js";
 import { renderLoginPage, renderSetupPage } from "./_lib/setup-page.js";
 import { renderKeypadPage } from "./_lib/keypad-page.js";
@@ -113,14 +115,18 @@ async function handleSetupAction({ request, env }) {
 
   if (body.action === "test") {
     const door = body.door && typeof body.door === "object" ? body.door : {};
-    return jsonResponse(
-      await openDoor({
-        name: String(door.name || "Porta").trim() || "Porta",
-        server: String(door.server || "").trim(),
-        device_id: String(door.device_id || "").trim(),
-        auth_key: String(door.auth_key || "").trim(),
-      })
-    );
+    const name = String(door.name || "Porta").trim() || "Porta";
+    const result = await openDoor({
+      name,
+      server: String(door.server || "").trim(),
+      device_id: String(door.device_id || "").trim(),
+      auth_key: String(door.auth_key || "").trim(),
+    });
+    // Il pannello amministrativo è in italiano.
+    return jsonResponse({
+      success: result.success,
+      msg: t("it", result.code, { name, status: result.status }),
+    });
   }
 
   return jsonResponse({ ok: false, msg: "Azione sconosciuta." }, { status: 400 });
@@ -130,32 +136,98 @@ async function handleSetupAction({ request, env }) {
 /* Tastierino pubblico                                                 */
 /* ------------------------------------------------------------------ */
 
+/** Piccolo ritardo sui codici errati, per rallentare i tentativi automatici. */
+function slowDown() {
+  return new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+/** Solo i dati che l'ospite può vedere: nessuna credenziale, nessun PIN. */
+function publicContent(config) {
+  return {
+    mode: config.mode,
+    emergency_contact: config.emergency_contact,
+    instructions: config.instructions,
+    doors: config.doors.map((door) => ({
+      id: door.id,
+      name: door.name,
+      instructions: door.instructions,
+      requiresPin: !!door.pin,
+    })),
+  };
+}
+
+/** Dizionario dell'interfaccia limitato alle lingue attivate. */
+function uiStrings(languages) {
+  const subset = {};
+  for (const code of languages) subset[code] = STRINGS[code];
+  return subset;
+}
+
+function languageFor(config, { explicit, request }) {
+  return resolveLanguage({
+    explicit,
+    acceptLanguage: request.headers.get("Accept-Language"),
+    fallback: config.default_language,
+    available: config.languages,
+  });
+}
+
 async function handlePublic({ request, env, url }) {
   const { config } = await loadConfig(env);
 
   if (request.method === "POST") {
-    return handleOpenRequest(request, config);
+    return handleGuestRequest({ request, url, config });
   }
 
-  const publicConfig = {
-    mode: config.mode,
-    emergency_contact: config.emergency_contact,
-    doors: config.doors.map((door) => ({
-      id: door.id,
-      name: door.name,
-      requiresPin: !!door.pin,
-    })),
-  };
+  const lang = languageFor(config, { explicit: url.searchParams.get("lang"), request });
+  const unlocked = await hasGuestAccess(request, config.access_pin);
 
-  return htmlResponse(renderKeypadPage({ config: publicConfig, setupPath: SETUP_PATH }));
+  return htmlResponse(
+    renderKeypadPage({
+      data: {
+        lang,
+        languages: config.languages,
+        languageLabels: LANGUAGE_LABELS,
+        ui: uiStrings(config.languages),
+        locked: !unlocked,
+        setupPath: SETUP_PATH,
+        // Finché il codice di accesso non è superato, l'elenco delle porte
+        // non viene nemmeno inviato al browser.
+        content: unlocked ? publicContent(config) : null,
+      },
+    })
+  );
 }
 
-async function handleOpenRequest(request, config) {
+async function handleGuestRequest({ request, url, config }) {
   let body;
   try {
     body = await request.json();
   } catch {
-    return jsonResponse({ success: false, msg: "Richiesta non valida." }, { status: 400 });
+    body = {};
+  }
+  const lang = languageFor(config, { explicit: body.lang, request });
+
+  if (body.action === "unlock") {
+    if (!config.access_pin) {
+      return jsonResponse({ success: true, content: publicContent(config) });
+    }
+    if (!safeEqual(String(body.pin || ""), config.access_pin)) {
+      await slowDown();
+      return jsonResponse({ success: false, msg: t(lang, "locked_error") });
+    }
+    return jsonResponse(
+      { success: true, content: publicContent(config) },
+      { headers: { "Set-Cookie": guestCookie(url, await createGuestToken(config.access_pin)) } }
+    );
+  }
+
+  // Apertura: il codice di accesso va superato anche qui, non solo a schermo.
+  if (!(await hasGuestAccess(request, config.access_pin))) {
+    return jsonResponse(
+      { success: false, locked: true, msg: t(lang, "locked_expired") },
+      { status: 401 }
+    );
   }
 
   const door =
@@ -163,12 +235,20 @@ async function handleOpenRequest(request, config) {
     config.doors[body.doorIndex];
 
   if (!door) {
-    return jsonResponse({ success: false, msg: "Porta non trovata" }, { status: 404 });
+    return jsonResponse({ success: false, msg: t(lang, "door_not_found") }, { status: 404 });
   }
 
   if (door.pin && !safeEqual(String(body.pin || ""), door.pin)) {
-    return jsonResponse({ success: false, msg: "PIN errato ❌" });
+    await slowDown();
+    return jsonResponse({ success: false, msg: t(lang, "pin_wrong") });
   }
 
-  return jsonResponse(await openDoor(resolveDoor(config, door)));
+  const result = await openDoor(resolveDoor(config, door));
+  return jsonResponse({
+    success: result.success,
+    msg: t(lang, result.code, {
+      name: pickText(door.name, lang, config.default_language),
+      status: result.status,
+    }),
+  });
 }

@@ -2,7 +2,9 @@
 // Sessione amministrativa firmata (cookie HttpOnly), al posto della password in URL.
 
 const COOKIE_NAME = "sc_setup";
-const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 ore
+const GUEST_COOKIE_NAME = "sc_guest";
+const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 ore (amministratore)
+const GUEST_TTL_SECONDS = 60 * 60 * 12; // 12 ore (ospite)
 const encoder = new TextEncoder();
 
 /** Confronto a tempo costante, per non far trapelare la password carattere per carattere. */
@@ -32,9 +34,9 @@ async function sign(secret, payload) {
     .join("");
 }
 
-/** Token di sessione: "<scadenza>.<hmac>", firmato con la password di setup. */
-export async function createSessionToken(password) {
-  const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
+/** Token di sessione: "<scadenza>.<hmac>", firmato con il segreto indicato. */
+export async function createSessionToken(password, ttlSeconds = SESSION_TTL_SECONDS) {
+  const expiresAt = Date.now() + ttlSeconds * 1000;
   return `${expiresAt}.${await sign(password, String(expiresAt))}`;
 }
 
@@ -60,20 +62,40 @@ export function readCookie(request, name = COOKIE_NAME) {
   return null;
 }
 
-function cookieAttributes(url, maxAge) {
+function cookieAttributes(url, maxAge, sameSite) {
   const secure = url.protocol === "https:" ? " Secure;" : "";
-  return `Path=/; HttpOnly;${secure} SameSite=Strict; Max-Age=${maxAge}`;
+  return `Path=/; HttpOnly;${secure} SameSite=${sameSite}; Max-Age=${maxAge}`;
 }
 
 export function sessionCookie(url, token) {
-  return `${COOKIE_NAME}=${encodeURIComponent(token)}; ${cookieAttributes(url, SESSION_TTL_SECONDS)}`;
+  return `${COOKIE_NAME}=${encodeURIComponent(token)}; ${cookieAttributes(url, SESSION_TTL_SECONDS, "Strict")}`;
 }
 
 export function clearSessionCookie(url) {
-  return `${COOKIE_NAME}=; ${cookieAttributes(url, 0)}`;
+  return `${COOKIE_NAME}=; ${cookieAttributes(url, 0, "Strict")}`;
 }
 
 /** true se la richiesta porta una sessione amministrativa valida. */
 export async function isAuthenticated(request, password) {
   return verifySessionToken(password, readCookie(request));
+}
+
+/* ------------------------------------------------------------------ */
+/* Sessione ospite: sblocco del codice di accesso                      */
+/* ------------------------------------------------------------------ */
+
+export async function createGuestToken(accessPin) {
+  return createSessionToken(accessPin, GUEST_TTL_SECONDS);
+}
+
+export function guestCookie(url, token) {
+  // SameSite=Lax (non Strict): l'ospite arriva quasi sempre da un link
+  // esterno (WhatsApp, email, QR code) e non deve ridigitare il codice.
+  return `${GUEST_COOKIE_NAME}=${encodeURIComponent(token)}; ${cookieAttributes(url, GUEST_TTL_SECONDS, "Lax")}`;
+}
+
+/** true se l'ospite ha già superato il codice di accesso (o se non è richiesto). */
+export async function hasGuestAccess(request, accessPin) {
+  if (!accessPin) return true;
+  return verifySessionToken(accessPin, readCookie(request, GUEST_COOKIE_NAME));
 }

@@ -28,15 +28,14 @@ export function normalizeShellyServer(input) {
 
 /**
  * Invia l'impulso di apertura al relè.
- * Ritorna { success, msg } già pronto per la risposta JSON.
+ * Ritorna { success, code, status } — il messaggio viene tradotto dal chiamante,
+ * perché dipende dalla lingua scelta dall'ospite.
  */
 export async function openDoor(door, { toggleAfter = 2 } = {}) {
   const host = normalizeShellyServer(door.server);
-  if (!host) {
-    return { success: false, msg: "Server Shelly non valido (atteso: nome.shelly.cloud) ⚠️" };
-  }
+  if (!host) return { success: false, code: "shelly_bad_server" };
   if (!door.device_id || !door.auth_key) {
-    return { success: false, msg: "Dispositivo non configurato correttamente ⚠️" };
+    return { success: false, code: "shelly_not_configured" };
   }
 
   let response;
@@ -58,17 +57,13 @@ export async function openDoor(door, { toggleAfter = 2 } = {}) {
       }),
     });
   } catch {
-    return { success: false, msg: "Shelly Cloud non raggiungibile 📡" };
+    return { success: false, code: "shelly_unreachable" };
   }
 
-  if (response.ok) {
-    return { success: true, msg: `${door.name} aperta! ✅` };
-  }
+  if (response.ok) return { success: true, code: "door_opened" };
   if (response.status === 401 || response.status === 403) {
-    return { success: false, msg: "Auth Key rifiutata da Shelly Cloud 🔑" };
+    return { success: false, code: "shelly_bad_auth" };
   }
-  if (response.status === 404) {
-    return { success: false, msg: "Device ID non trovato su Shelly Cloud ❓" };
-  }
-  return { success: false, msg: `Errore Shelly Cloud (${response.status})` };
+  if (response.status === 404) return { success: false, code: "shelly_device_not_found" };
+  return { success: false, code: "shelly_error", status: response.status };
 }

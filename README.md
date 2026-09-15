@@ -6,6 +6,12 @@ Non è richiesta alcuna competenza di programmazione: ti basterà seguire le ist
 
 > 💡 **La configurazione è persistente.** Porte, PIN e credenziali vengono salvati direttamente dalla pagina `/setup` e restano memorizzati: non devi più reinserirli ogni volta, né copiare-incollare codice, né rifare il deploy.
 
+**In breve, il sistema offre:**
+- 🌍 sito per gli ospiti in **italiano e inglese**, con selettore di lingua;
+- 🔒 **codice di accesso** opzionale, richiesto prima ancora di mostrare quali porte esistono;
+- 📝 **istruzioni** personalizzabili, generali e per singolo ingresso;
+- 🚪 più porte sullo **stesso dispositivo Shelly**, per l'installazione con un solo pulsante che apre più cancelli.
+
 ---
 
 ## 📋 Indice
@@ -16,9 +22,11 @@ Non è richiesta alcuna competenza di programmazione: ti basterà seguire le ist
 5. [Impostare la Password di Setup](#5-impostare-la-password-di-setup)
 6. [Attivare il salvataggio permanente (KV)](#6-attivare-il-salvataggio-permanente-kv)
 7. [Configurare le porte (`/setup`)](#7-configurare-le-porte-setup)
-8. [Utilizzo Quotidiano](#8-utilizzo-quotidiano)
-9. [Risoluzione Problemi Frequenti](#9-risoluzione-problemi-frequenti)
-10. [Struttura del progetto](#10-struttura-del-progetto)
+8. [Lingue, codice di accesso e istruzioni](#8-lingue-codice-di-accesso-e-istruzioni)
+9. [Caso pratico: un pulsante, due cancelli](#9-caso-pratico-un-pulsante-due-cancelli)
+10. [Utilizzo Quotidiano](#10-utilizzo-quotidiano)
+11. [Risoluzione Problemi Frequenti](#11-risoluzione-problemi-frequenti)
+12. [Struttura del progetto](#12-struttura-del-progetto)
 
 ---
 
@@ -137,18 +145,24 @@ La pagina si apre **già compilata con la configurazione attuale**: modifichi so
 1. **Impostazioni Generali**
    - *Modalità Sequenziale:* utile con due ingressi consecutivi (es. Cancello Pedonale ➔ Portone d'Ingresso). Il sito guida l'ospite ad aprire prima uno e poi l'altro.
    - *Modalità Selezione Libera:* mostra l'elenco dei pulsanti e lascia scegliere quale aprire.
+   - *Lingue del sito* e *Lingua predefinita:* vedi il [punto 8](#8-lingue-codice-di-accesso-e-istruzioni).
    - *Telefono Assistenza (Opzionale):* fa comparire un pulsante "Chiama Assistenza" sul sito.
 
-2. **Account Shelly Condiviso** — inserisci **una sola volta** Server e Auth Key. Tutte le porte li erediteranno.
+2. **Codice di Accesso** *(opzionale)* — il PIN chiesto all'ospite prima di mostrargli le porte. Vedi il [punto 8](#8-lingue-codice-di-accesso-e-istruzioni).
 
-3. **Porte e Dispositivi** — clicca **Aggiungi Porta** e compila:
-   - **Nome identificativo** (es. *Cancello Esterno*).
-   - **Shelly Device ID** recuperato al punto 2.C.
-   - **PIN di sblocco** *(opzionale)*: da 3 a 10 cifre; lascia vuoto per aprire senza codice.
+3. **Istruzioni per gli Ospiti** *(opzionale)* — testo libero mostrato nella pagina di apertura.
+
+4. **Account Shelly Condiviso** — inserisci **una sola volta** Server e Auth Key. Tutte le porte li erediteranno.
+
+5. **Porte e Dispositivi** — clicca **Aggiungi Porta** e compila:
+   - **Nome identificativo** (es. *Cancello Esterno*), in ogni lingua attivata.
+   - **Istruzioni per questa apertura** *(opzionale)*: mostrate all'ospite subito prima del pulsante.
+   - **Shelly Device ID** recuperato al punto 2.C. **Più porte possono usare lo stesso Device ID**: vedi il [punto 9](#9-caso-pratico-un-pulsante-due-cancelli).
+   - **PIN di sblocco** *(opzionale)*: da 3 a 10 cifre; lascia vuoto per aprire senza codice. È distinto dal codice di accesso al sito.
 
    Per ogni porta hai a disposizione:
    - **↑ ↓** per riordinarle (conta nella modalità sequenziale);
-   - **⧉** per duplicare una porta mantenendo le impostazioni;
+   - **⧉** per duplicare una porta **mantenendo il Device ID** (utile nel caso del [punto 9](#9-caso-pratico-un-pulsante-due-cancelli));
    - **✕** per rimuoverla;
    - **🔌 Prova apertura** per testare subito il dispositivo, ancora prima di salvare;
    - **Credenziali specifiche per questa porta**, da usare solo nel caso raro di un secondo account Shelly.
@@ -161,16 +175,77 @@ Nella sezione **Backup e opzioni avanzate** trovi la configurazione in formato t
 
 ---
 
-## 8. Utilizzo Quotidiano
+## 8. Lingue, codice di accesso e istruzioni
+
+### 🌍 Italiano e inglese
+Il sito per gli ospiti è bilingue. Pulsanti, messaggi ed errori sono già tradotti; i testi che scrivi tu (nomi delle porte e istruzioni) hanno un campo per ogni lingua attivata, contrassegnato da `IT` e `EN`.
+
+- La pagina parte **nella lingua del telefono dell'ospite**; in alto c'è un selettore `IT / EN` e la scelta viene ricordata.
+- Se un testo in inglese è vuoto, viene mostrato quello italiano: non resta mai uno spazio bianco.
+- Puoi disattivare una lingua togliendo la spunta in *Lingue del sito*: il selettore sparisce e i campi corrispondenti non ti vengono più chiesti.
+- Il **pannello `/setup` è in italiano**: la traduzione riguarda la pagina vista dagli ospiti.
+
+> 💡 Vuoi vedere il sito in una lingua precisa? Aggiungi `?lang=en` o `?lang=it` al link.
+
+### 🔒 Codice di accesso (il PIN "a monte")
+Nella sezione *Codice di Accesso* puoi impostare un PIN richiesto **prima ancora di mostrare quali porte esistono**. Finché non viene inserito, l'elenco degli ingressi non viene nemmeno inviato al browser, e nessun comando di apertura viene accettato.
+
+- Da 4 a 12 cifre, **consigliate almeno 6**.
+- Superato il codice, l'ospite resta autenticato per **12 ore**; cambiando il codice tutte le sessioni decadono subito.
+- Resta indipendente dal **PIN della singola porta**: puoi usare un codice per entrare nel sito e un PIN diverso, per esempio, sul solo garage.
+- Lascia il campo vuoto per lasciare il sito libero (comportamento precedente).
+
+> ⚠️ **Onestà sul livello di sicurezza:** è un deterrente paragonabile al codice di una cassetta portachiavi, non una password robusta. I tentativi errati vengono rallentati, ma chi ha il link può provare a indovinare: usa 6 cifre o più e cambia il codice fra un ospite e l'altro.
+
+### 📝 Istruzioni
+Ci sono due livelli, entrambi opzionali:
+
+| Campo | Dove appare |
+|---|---|
+| **Istruzioni generali** | In cima alla pagina, prima dell'elenco degli ingressi |
+| **Istruzioni per questa apertura** | Nella schermata della singola porta, subito sopra il pulsante |
+
+Servono a spiegare all'ospite cosa deve fare *fisicamente*: da quale citofono suonare, dove si trova il portone, cosa aspettarsi dopo aver premuto. Gli a capo vengono rispettati.
+
+---
+
+## 9. Caso pratico: un pulsante, due cancelli
+
+Un'installazione ricorrente: **un solo relè Shelly** collegato al pulsante del citofono, che però apre due cancelli diversi a seconda di dove ti trovi.
+
+> Suoni dal pulsante fuori dal cancello principale, premi il tasto 1 e si apre il principale.
+> Suoni dal pulsante del portone, premi il tasto 1 e si apre il portone.
+
+Il dispositivo è sempre lo stesso: quello che cambia è **da quale citofono hai suonato**. Il sistema non può saperlo, ma l'ospite sì — quindi si configurano **due porte distinte che condividono lo stesso Device ID**, differenziate dalle istruzioni.
+
+**Come si imposta:**
+
+1. Metti la **Modalità Sequenziale**: l'ospite viene guidato prima a un ingresso e poi all'altro, nell'ordine giusto.
+2. Crea la prima porta:
+   - Nome: `Cancello principale`
+   - Device ID: quello del tuo relè (es. `34845d62a12c`)
+   - Istruzioni: *"Suona dal pulsante fuori dal cancello principale, poi premi Apri ora."*
+3. Premi **⧉ Duplica**: la copia conserva il Device ID e va solo rinominata.
+4. Sistema la seconda porta:
+   - Nome: `Portone`
+   - Device ID: **lo stesso** della prima
+   - Istruzioni: *"Una volta dentro, suona dal pulsante del portone e premi di nuovo Apri ora."*
+5. Usa **↑ ↓** per verificare che l'ordine rispecchi il percorso reale, poi **Salva configurazione**.
+
+L'ospite vedrà una schermata alla volta, con scritto esattamente cosa fare prima di premere. Ripetere lo stesso Device ID è del tutto legittimo: la validazione non lo segnala come errore.
+
+---
+
+## 10. Utilizzo Quotidiano
 
 Il tuo sistema è pronto!
 
-- **Per gli utenti / ospiti:** basta collegarsi all'indirizzo base del sito (es. `https://opendoor-8id.pages.dev/`). Apparirà il tastierino con i pulsanti per aprire le porte e l'eventuale richiesta del PIN.
+- **Per gli utenti / ospiti:** basta collegarsi all'indirizzo base del sito (es. `https://opendoor-8id.pages.dev/`). Se hai impostato un codice di accesso verrà chiesto per primo; poi apparirà il tastierino con le istruzioni, i pulsanti di apertura e l'eventuale PIN della singola porta.
 - **Per modificare la configurazione:** torna su `/setup`, cambia ciò che ti serve e premi **Salva configurazione**. Le modifiche sono immediate.
 
 ---
 
-## 9. Risoluzione Problemi Frequenti
+## 11. Risoluzione Problemi Frequenti
 
 #### ❓ Errore 404 / Pagina non trovata
 - **Causa:** il file del codice non si chiama esattamente `[[path]].js` dentro `functions/`, oppure manca la cartella `functions/_lib/`.
@@ -190,19 +265,27 @@ Il tuo sistema è pronto!
   - *"Server Shelly non valido"* ➔ il server deve essere nella forma `shelly-281-eu` o `shelly-281-eu.shelly.cloud`.
   - *"Shelly Cloud non raggiungibile"* ➔ il relè è offline: verifica il Wi-Fi del dispositivo.
 
+#### ❓ L'ospite non riesce a entrare con il codice di accesso
+- **Risoluzione:** controlla il codice in `/setup` (pulsante *Mostra* accanto al campo). Ricorda che è diverso dal PIN della singola porta e che, cambiandolo, chi era già entrato deve reinserirlo.
+
+#### ❓ Il sito appare in inglese a un ospite italiano (o viceversa)
+- **Causa:** la lingua iniziale segue le impostazioni del telefono dell'ospite.
+- **Risoluzione:** può cambiarla dal selettore `IT / EN` in alto. Per forzarla nel link che gli mandi, aggiungi `?lang=it`.
+
 #### ❓ Ho perso la configurazione
 - **Risoluzione:** se avevi fatto un backup dalla sezione *Backup e opzioni avanzate*, incollalo lì e premi *Importa dal testo*, poi *Salva configurazione*.
 
 ---
 
-## 10. Struttura del progetto
+## 12. Struttura del progetto
 
 ```
 functions/
 ├── [[path]].js          Router: /setup (pannello) e /* (tastierino + apertura)
 └── _lib/
     ├── store.js         Lettura/scrittura della configurazione (KV, fallback CONFIG)
-    ├── auth.js          Sessione amministrativa firmata (cookie HttpOnly)
+    ├── i18n.js          Traduzioni dell'interfaccia e scelta della lingua
+    ├── auth.js          Sessioni firmate: amministratore e ospite (cookie HttpOnly)
     ├── shelly.js        Chiamate a Shelly Cloud e validazione del server
     ├── setup-page.js    Pagina di login e pannello di configurazione
     ├── keypad-page.js   Pagina pubblica di apertura
