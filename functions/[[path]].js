@@ -19,6 +19,10 @@ const SETUP_PATH = "/setup";
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
+  // Serve the branding image instead of the catch-all keypad page.
+  if (url.pathname === "/logo.jpg" && (request.method === "GET" || request.method === "HEAD")) {
+    return env.ASSETS.fetch(request);
+  }
   const setupPassword = env.SETUP_PASSWORD || "admin";
 
   if (url.pathname === SETUP_PATH || url.pathname.endsWith("/setup")) {
