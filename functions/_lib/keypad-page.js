@@ -65,7 +65,7 @@ export function renderKeypadPage({ data }) {
 <body>
   <div class="box">
     <div class="lang-switch" id="langSwitch"></div>
-    <img src="/logo.jpg" class="logo" alt="Quintessenza" onerror="this.style.display='none'">
+    <img src="/logo.png" class="logo" alt="Quintessenza" onerror="this.style.display='none'">
     <span class="badge" id="badge"></span>
     <h1 id="title"></h1>
     <div id="actionArea"></div>
