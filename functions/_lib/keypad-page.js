@@ -156,6 +156,34 @@ const KEYPAD_STYLES = `
     h1 { font-size: 1.48rem; }
   }
 
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    body { align-items: flex-start; padding: 0.5rem 1rem; font-size: 16px; }
+    .box {
+      max-width: 520px; padding: 2.9rem 1.25rem 0.85rem;
+      border-radius: 18px; box-shadow: 0 10px 30px rgba(42, 37, 29, 0.12), 4px 4px 0 #2d2b27;
+    }
+    .logo { max-width: 82px; margin-bottom: 0.25rem; }
+    .box .badge { font-size: 0.68rem; margin-bottom: 0.1rem; }
+    h1 { font-size: 1.3rem; margin: 0.15rem 0 0.45rem; }
+    .hint { font-size: 0.95rem; line-height: 1.35; margin-bottom: 0.45rem; }
+    #actionArea.locked {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.55rem;
+    }
+    #actionArea.locked .hint { grid-column: 1 / -1; margin-bottom: 0; }
+    #actionArea.locked input,
+    #actionArea.locked button.action { min-height: 54px; margin-bottom: 0; }
+    #statusMessage { margin-top: 0.45rem; min-height: 22px; font-size: 0.9rem; }
+    .lang-switch { top: 0.65rem; right: 0.75rem; }
+    .lang-menu {
+      max-height: calc(100dvh - 4.5rem); overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    .emergency { bottom: max(0.25rem, env(safe-area-inset-bottom)); }
+    .emergency a { min-height: 44px; font-size: 0.9rem; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
   }
@@ -337,6 +365,7 @@ export function renderKeypadPage({ data }) {
     });
 
     function renderLocked() {
+      area().className = 'locked';
       title(T('locked_title'));
       area().appendChild(h('p', 'hint', T('locked_hint')));
       var input = pinField(T('pin_placeholder'));
@@ -444,6 +473,7 @@ export function renderKeypadPage({ data }) {
       document.documentElement.lang = lang;
       document.getElementById('badge').textContent = T('badge');
       area().innerHTML = '';
+      area().className = '';
 
       var emergency = document.getElementById('emergencySection');
       var emergencyContact = data.emergencyContact || (content && content.emergency_contact) || '';
