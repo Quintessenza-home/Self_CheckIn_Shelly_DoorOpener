@@ -198,6 +198,8 @@ async function handlePublic({ request, env, url }) {
         ui: uiStrings(config.languages),
         locked: !unlocked,
         setupPath: SETUP_PATH,
+        // Il contatto di assistenza deve essere disponibile anche prima dello sblocco.
+        emergencyContact: config.emergency_contact,
         // Finché il codice di accesso non è superato, l'elenco delle porte
         // non viene nemmeno inviato al browser.
         content: unlocked ? publicContent(config) : null,
