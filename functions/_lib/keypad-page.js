@@ -4,59 +4,133 @@
 import { BASE_STYLES, jsonForScript } from "./html.js";
 
 const KEYPAD_STYLES = `
-  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1.5rem; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; min-height: 100dvh; padding: 2rem 1rem;
+    background: linear-gradient(145deg, #f8f4ec 0%, #fbfaf7 48%, #eef4ef 100%);
+    font-size: 18px;
+  }
   .box {
-    text-align: center; padding: 2.25rem 2rem; border-radius: 16px; background: var(--card-bg);
-    border: 2px solid var(--border-dark); box-shadow: 4px 4px 0px var(--border-dark);
-    width: 100%; max-width: 360px; position: relative;
+    text-align: center; padding: 3rem 2.25rem 2.5rem; border-radius: 24px;
+    background: rgba(255, 255, 255, 0.98); border: 2px solid #2d2b27;
+    box-shadow: 0 18px 50px rgba(42, 37, 29, 0.14), 5px 5px 0 #2d2b27;
+    width: 100%; max-width: 430px; position: relative; overflow: hidden;
   }
-  .lang-switch {\n    position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.3rem;\n    justify-content: flex-end; margin: 0; z-index: 1;\n  }
+  .box::before {
+    content: ""; position: absolute; inset: 0 0 auto; height: 6px;
+    background: linear-gradient(90deg, #b79355, #d4bd8a 52%, #2f6b4f);
+  }
+  .lang-switch {
+    position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.4rem;
+    justify-content: flex-end; margin: 0; z-index: 1;
+  }
   .lang-switch button {
-    padding: 0.28rem 0.7rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
-    text-transform: uppercase; background: transparent; color: var(--text-subtle);
-    border: 2px solid var(--border); border-radius: 999px;
+    min-width: 48px; min-height: 40px; padding: 0.4rem 0.7rem;
+    font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em;
+    text-transform: uppercase; background: #fff; color: #4a4741;
+    border: 2px solid #d8d2c7; border-radius: 999px;
   }
-  .lang-switch button[aria-pressed="true"] { background: var(--border-dark); color: #fff; border-color: var(--border-dark); }
-  .logo { max-width: 150px; height: auto; margin: 0 auto 1.25rem; display: block; }
-  h1 { font-size: 1.35rem; font-weight: 800; margin: 0.5rem 0 1.25rem; line-height: 1.3; }
+  .lang-switch button[aria-pressed="true"] {
+    background: #2d2b27; color: #fff; border-color: #2d2b27;
+  }
+  .logo { max-width: 165px; height: auto; margin: 0 auto 1.15rem; display: block; }
+  .box .badge {
+    font-size: 0.78rem; line-height: 1.4; letter-spacing: 0.14em;
+    color: #966232; margin-bottom: 0.3rem;
+  }
+  h1 {
+    font-size: 1.65rem; font-weight: 800; margin: 0.35rem 0 1.5rem;
+    line-height: 1.25; letter-spacing: -0.02em;
+  }
   .instructions {
-    text-align: left; background: var(--section-bg); border: 2px solid var(--border);
-    border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 1.25rem;
+    text-align: left; background: #f8f5ee; border: 2px solid #ded7ca;
+    border-left: 6px solid #b79355; border-radius: 14px;
+    padding: 1.05rem 1.1rem; margin-bottom: 1.3rem;
   }
   .instructions .heading {
-    font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--brand); margin-bottom: 0.4rem;
+    font-size: 0.82rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.09em; color: #7b522d; margin-bottom: 0.45rem;
   }
-  .instructions p { margin: 0; font-size: 0.92rem; line-height: 1.55; white-space: pre-wrap; }
+  .instructions p {
+    margin: 0; font-size: 1.05rem; line-height: 1.65; white-space: pre-wrap;
+    color: #292824;
+  }
   input {
-    font-size: 1.4rem; text-align: center; letter-spacing: 0.3rem; padding: 0.85rem;
-    border-color: var(--border-dark); margin-bottom: 1rem; background: #faf8f5;
+    min-height: 64px; font-size: 1.5rem; text-align: center; letter-spacing: 0.3rem;
+    padding: 0.9rem; border: 2px solid #2d2b27; border-radius: 12px;
+    margin-bottom: 1rem; background: #fbfaf7;
   }
   button.action {
-    width: 100%; padding: 0.9rem 1rem; font-size: 1rem; font-weight: 700; color: #fff;
-    background: var(--border-dark); border: 2px solid var(--border-dark); border-radius: 10px;
-    margin-bottom: 0.75rem; cursor: pointer;
+    width: 100%; min-height: 62px; padding: 0.95rem 1rem;
+    font-size: 1.1rem; line-height: 1.25; font-weight: 800; color: #fff;
+    background: #2d2b27; border: 2px solid #2d2b27; border-radius: 14px;
+    margin-bottom: 0.8rem; cursor: pointer; touch-action: manipulation;
   }
-  button.action:active { transform: scale(0.97); }
-  button.action:disabled { background: #a1a1aa; border-color: #a1a1aa; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 4px solid rgba(47, 107, 79, 0.3); outline-offset: 3px;
+  }
+  button.action:active { transform: scale(0.98); }
+  button.action:disabled {
+    background: #a1a1aa; border-color: #a1a1aa; box-shadow: none; cursor: not-allowed;
+  }
   button.action.btn-open {
     background: #2f6b4f; border-color: #24543e; color: #fff;
-    box-shadow: 0 4px 0 #1d422f; font-size: 1.05rem;
+    box-shadow: 0 4px 0 #1d422f; font-size: 1.15rem;
   }
   button.action.btn-open:hover { background: #285f46; }
   button.action.btn-open:active { box-shadow: 0 1px 0 #1d422f; transform: translateY(3px); }
-    .btn-choice { background: #fff; color: var(--text-main); box-shadow: 2px 2px 0px var(--border-dark); }
-  .btn-choice:active { box-shadow: 0px 0px 0px var(--border-dark); }
-  .btn-back { background: transparent; color: var(--text-subtle); border-color: var(--border); }
-  .hint { font-size: 0.88rem; color: var(--text-subtle); line-height: 1.5; margin: 0 0 1.1rem; }
-  #statusMessage { margin-top: 1.25rem; font-weight: 700; font-size: 1rem; min-height: 24px; word-break: break-word; }
-  .emergency { margin-top: 1.75rem; border-top: 2px solid var(--border); padding-top: 1.25rem; }
-  .emergency a {
-    color: var(--brand); text-decoration: none; font-size: 0.85rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.05em;
+  button.action.btn-choice {
+    background: #fff; color: #262521; border-color: #45423c;
+    box-shadow: 0 3px 0 #45423c;
   }
-  .setup-hint a { color: var(--brand); font-weight: 700; }
-`;
+  button.action.btn-choice:hover { background: #f7f4ed; border-color: #2f6b4f; }
+  button.action.btn-choice:active { box-shadow: 0 1px 0 #45423c; transform: translateY(2px); }
+  button.action.btn-back {
+    background: #f4f2ed; color: #3f3d38; border-color: #cbc5ba; box-shadow: none;
+  }
+  button.action.btn-back:hover { background: #ebe8e1; }
+  .hint {
+    font-size: 1.05rem; color: #57544e; line-height: 1.65; margin: 0 0 1.2rem;
+  }
+  #statusMessage {
+    margin-top: 1.25rem; font-weight: 800; font-size: 1.05rem;
+    line-height: 1.5; min-height: 26px; word-break: break-word;
+  }
+  .emergency { margin-top: 2rem; border-top: 2px solid #e2ddd4; padding-top: 1.3rem; }
+  .emergency a {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
+    color: #a74331; text-decoration: none; font-size: 0.98rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.045em;
+  }
+  .setup-hint a { color: #2f6b4f; font-weight: 800; }
+
+  @media (max-width: 480px) {
+    body { align-items: flex-start; padding: 0; background: #fff; }
+    .box {
+      max-width: none; min-height: 100vh; min-height: 100dvh;
+      padding: 4.75rem 1.25rem 2rem; border: 0; border-radius: 0;
+      box-shadow: none; overflow: visible;
+    }
+    .box::before { height: 5px; }
+    .lang-switch { top: 1rem; right: 1rem; }
+    .logo { max-width: 155px; margin-bottom: 1.1rem; }
+    h1 { font-size: 1.55rem; margin-bottom: 1.35rem; }
+    .instructions { padding: 1rem; margin-bottom: 1.15rem; }
+    button.action { min-height: 64px; }
+    .emergency { margin-top: 2.25rem; }
+  }
+
+  @media (max-width: 360px) {
+    .box { padding-left: 1rem; padding-right: 1rem; }
+    .lang-switch button { min-width: 44px; padding-inline: 0.55rem; }
+    .logo { max-width: 145px; }
+    h1 { font-size: 1.48rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+  }
+`
 
 export function renderKeypadPage({ data }) {
   return `<!DOCTYPE html>
