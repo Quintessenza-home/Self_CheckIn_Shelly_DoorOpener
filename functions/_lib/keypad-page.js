@@ -6,7 +6,7 @@ import { BASE_STYLES, jsonForScript } from "./html.js";
 const KEYPAD_STYLES = `
   body {
     display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; min-height: 100dvh; padding: 2rem 1rem;
+    min-height: 100vh; min-height: 100dvh; padding: 2rem 1rem 7rem;
     background: linear-gradient(145deg, #f8f4ec 0%, #fbfaf7 48%, #eef4ef 100%);
     font-size: 18px;
   }
@@ -96,19 +96,25 @@ const KEYPAD_STYLES = `
     margin-top: 1.25rem; font-weight: 800; font-size: 1.05rem;
     line-height: 1.5; min-height: 26px; word-break: break-word;
   }
-  .emergency { margin-top: 2rem; border-top: 2px solid #e2ddd4; padding-top: 1.3rem; }
+  .emergency {
+    position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom));
+    transform: translateX(-50%); z-index: 20; width: min(calc(100% - 2rem), 430px);
+    margin: 0; padding: 0.55rem; background: rgba(255, 250, 247, 0.97);
+    border: 2px solid #c77867; border-radius: 16px;
+    box-shadow: 0 8px 28px rgba(79, 39, 31, 0.2); backdrop-filter: blur(8px);
+  }
   .emergency a {
-    display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
-    color: #a74331; text-decoration: none; font-size: 0.98rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; min-height: 56px;
+    color: #923b2b; text-decoration: none; font-size: 1rem; font-weight: 800;
     text-transform: uppercase; letter-spacing: 0.045em;
   }
   .setup-hint a { color: #2f6b4f; font-weight: 800; }
 
   @media (max-width: 480px) {
-    body { align-items: flex-start; padding: 0; background: #fff; }
+    body { align-items: flex-start; padding: 0 0 7rem; background: #fff; }
     .box {
       max-width: none; min-height: 100vh; min-height: 100dvh;
-      padding: 4.75rem 1.25rem 2rem; border: 0; border-radius: 0;
+      padding: 4.75rem 1.25rem 8rem; border: 0; border-radius: 0;
       box-shadow: none; overflow: visible;
     }
     .box::before { height: 5px; }
@@ -117,7 +123,7 @@ const KEYPAD_STYLES = `
     h1 { font-size: 1.55rem; margin-bottom: 1.35rem; }
     .instructions { padding: 1rem; margin-bottom: 1.15rem; }
     button.action { min-height: 64px; }
-    .emergency { margin-top: 2.25rem; }
+    .emergency { width: calc(100% - 1rem); bottom: max(0.5rem, env(safe-area-inset-bottom)); }
   }
 
   @media (max-width: 360px) {
@@ -374,9 +380,10 @@ export function renderKeypadPage({ data }) {
       area().innerHTML = '';
 
       var emergency = document.getElementById('emergencySection');
-      if (unlocked && content && content.emergency_contact) {
+      var emergencyContact = data.emergencyContact || (content && content.emergency_contact) || '';
+      if (emergencyContact) {
         var link = document.getElementById('emergencyLink');
-        link.href = 'tel:' + content.emergency_contact;
+        link.href = 'tel:' + emergencyContact;
         link.textContent = T('emergency');
         emergency.style.display = 'block';
       } else {
