@@ -94,6 +94,17 @@ const SETUP_STYLES = `
   .door-status.err { color: var(--danger); }
   .door-status.pending { color: var(--text-subtle); }
   textarea.json { height: 200px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; background: #18181b; color: #38bdf8; border-color: var(--border-dark); }
+
+  .quick-pin-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 1rem 1.1rem; margin-bottom: 1.5rem; border-radius: 12px;
+    border: 2px solid #24543e; background: #eef8f1; color: #183d2d;
+    text-decoration: none; box-shadow: 3px 3px 0 #24543e;
+  }
+  .quick-pin-card strong { display: block; font-size: 1.05rem; margin-bottom: 0.2rem; }
+  .quick-pin-card span { display: block; font-size: 0.9rem; line-height: 1.4; }
+  .quick-pin-card .quick-arrow { font-size: 1.5rem; font-weight: 900; }
+
   @media (max-width: 480px) {
     .card { padding: 1.25rem; }
     .row { flex-direction: column; gap: 0; }
@@ -174,6 +185,152 @@ function renderLanguageCheckboxes() {
   ).join("");
 }
 
+
+export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl }) {
+  return `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>PIN ospiti</title>
+  <style>
+    ${BASE_STYLES}
+    body { min-height: 100vh; min-height: 100dvh; padding: 1rem; display: flex; align-items: center; justify-content: center; }
+    .pin-wrap { width: 100%; max-width: 520px; }
+    .pin-card { background: var(--card-bg); padding: 1.5rem; border: 2px solid var(--border-dark); border-radius: 18px; box-shadow: 4px 4px 0 var(--border-dark); }
+    .back { display: inline-block; margin-bottom: 1.1rem; color: var(--brand-green); font-weight: 800; text-decoration: none; }
+    .badge { display: block; margin-bottom: 0.35rem; }
+    h1 { margin: 0 0 0.65rem; font-size: 1.7rem; }
+    .intro { margin: 0 0 1.25rem; color: var(--text-subtle); font-size: 1rem; line-height: 1.55; }
+    label { display: block; margin-bottom: 0.45rem; font-size: 1rem; font-weight: 800; }
+    .pin-line { display: grid; grid-template-columns: 1fr auto; gap: 0.6rem; }
+    #guestPin { min-height: 64px; font-size: 1.75rem; font-weight: 800; text-align: center; letter-spacing: 0.28rem; }
+    button { min-height: 56px; padding: 0.8rem 1rem; border: 2px solid var(--border-dark); border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; }
+    .show { min-width: 92px; background: #fff; color: var(--text); }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
+    .generate { background: #fff; color: var(--text); }
+    .activate { background: var(--brand-green); border-color: #24543e; color: #fff; }
+    .activate:disabled, .copy:disabled { opacity: 0.45; cursor: not-allowed; }
+    .hint { margin: 0.55rem 0 0; color: var(--text-subtle); font-size: 0.95rem; line-height: 1.45; }
+    .warning { margin-top: 1.15rem; padding: 0.85rem; border-radius: 10px; background: #fff7ed; border: 2px solid #c2410c; color: #7c2d12; font-size: 0.92rem; line-height: 1.45; }
+    .status { min-height: 28px; margin: 1rem 0 0; font-weight: 800; text-align: center; }
+    .share { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.75rem; }
+    .copy { background: #f5f2eb; color: var(--text); }
+    @media (max-width: 430px) {
+      body { padding: 0; align-items: stretch; background: #fff; }
+      .pin-card { min-height: 100vh; min-height: 100dvh; border: 0; border-radius: 0; box-shadow: none; padding: 1.25rem 1rem 2rem; }
+      .actions, .share { grid-template-columns: 1fr; }
+      h1 { font-size: 1.55rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="pin-wrap">
+    <section class="pin-card">
+      <a class="back" href="${escapeHtml(setupPath)}">← Configurazione completa</a>
+      <span class="badge">Accesso rapido</span>
+      <h1>PIN ospiti</h1>
+      <p class="intro">Genera un PIN di 4 cifre oppure inseriscine uno manualmente da 4 a 6 cifre.</p>
+
+      <label for="guestPin">PIN da attivare</label>
+      <div class="pin-line">
+        <input id="guestPin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" autocomplete="off" value="${escapeHtml(accessPin || "")}">
+        <button type="button" class="show" id="showPin">Mostra</button>
+      </div>
+      <p class="hint">Sono ammesse esclusivamente da 4 a 6 cifre.</p>
+
+      <div class="actions">
+        <button type="button" class="generate" id="generatePin">Genera PIN di 4 cifre</button>
+        <button type="button" class="activate" id="activatePin">Attiva nuovo PIN</button>
+      </div>
+
+      <div class="warning">Quando attivi un nuovo PIN, le sessioni ospite già aperte vengono invalidate e dovranno inserire il nuovo codice.</div>
+      <div class="status" id="pinStatus" role="status" aria-live="polite"></div>
+
+      <div class="share">
+        <button type="button" class="copy" id="copyPin">Copia PIN</button>
+        <button type="button" class="copy" id="copyMessage">Copia messaggio ospite</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    var endpoint = ${jsonForScript(actionPath)};
+    var publicUrl = ${jsonForScript(publicUrl.replace(/\/$/, "") + "/")};
+    var currentPin = ${jsonForScript(accessPin || "")};
+    var input = document.getElementById('guestPin');
+    var statusNode = document.getElementById('pinStatus');
+    var activateButton = document.getElementById('activatePin');
+    var copyPinButton = document.getElementById('copyPin');
+    var copyMessageButton = document.getElementById('copyMessage');
+
+    function isValid(value) { return /^[0-9]{4,6}$/.test(value); }
+    function setStatus(message, ok) {
+      statusNode.textContent = message || '';
+      statusNode.style.color = ok ? 'var(--brand-green)' : 'var(--danger)';
+    }
+    function updateButtons() {
+      var valid = isValid(input.value);
+      var active = valid && input.value === currentPin;
+      activateButton.disabled = !valid || active;
+      copyPinButton.disabled = !active;
+      copyMessageButton.disabled = !active;
+    }
+    function copyText(value, successMessage) {
+      function done() { setStatus(successMessage, true); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(done).catch(function () { fallbackCopy(value, done); });
+      } else fallbackCopy(value, done);
+    }
+    function fallbackCopy(value, done) {
+      var node = document.createElement('textarea');
+      node.value = value; node.setAttribute('readonly', ''); node.style.position = 'fixed'; node.style.opacity = '0';
+      document.body.appendChild(node); node.select(); document.execCommand('copy'); node.remove(); done();
+    }
+
+    input.addEventListener('input', function () {
+      input.value = input.value.replace(/[^0-9]/g, '').slice(0, 6);
+      setStatus('', false); updateButtons();
+    });
+    document.getElementById('showPin').addEventListener('click', function (event) {
+      var hidden = input.type === 'password';
+      input.type = hidden ? 'text' : 'password';
+      event.currentTarget.textContent = hidden ? 'Nascondi' : 'Mostra';
+    });
+    document.getElementById('generatePin').addEventListener('click', function () {
+      var value = new Uint32Array(1); crypto.getRandomValues(value);
+      input.value = String(1000 + (value[0] % 9000));
+      input.type = 'text'; document.getElementById('showPin').textContent = 'Nascondi';
+      setStatus('Nuovo PIN generato. Premi “Attiva nuovo PIN” per salvarlo.', true); updateButtons();
+    });
+    activateButton.addEventListener('click', function () {
+      var pin = input.value;
+      if (!isValid(pin)) return setStatus('Inserisci un PIN da 4 a 6 cifre.', false);
+      if (!window.confirm('Attivare il nuovo PIN? Gli ospiti già collegati dovranno inserirlo nuovamente.')) return;
+      activateButton.disabled = true; setStatus('Salvataggio in corso…', true);
+      fetch(endpoint, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save-access-pin', access_pin: pin })
+      }).then(function (response) { return response.json(); }).then(function (result) {
+        if (!result.ok) throw new Error(result.msg || 'Salvataggio non riuscito.');
+        currentPin = pin; setStatus(result.msg, true); updateButtons();
+      }).catch(function (error) { setStatus(error.message, false); updateButtons(); });
+    });
+    copyPinButton.addEventListener('click', function () {
+      if (isValid(currentPin)) copyText(currentPin, 'PIN copiato ✅');
+    });
+    copyMessageButton.addEventListener('click', function () {
+      if (!isValid(currentPin)) return;
+      var message = 'Benvenuto a Quintessenza Home.\\nApri gli ingressi da: ' + publicUrl + '\\nPIN di accesso: ' + currentPin;
+      copyText(message, 'Messaggio per l’ospite copiato ✅');
+    });
+    updateButtons();
+  </script>
+</body>
+</html>`;
+}
+
 export function renderSetupPage({ config, storage, actionPath }) {
   return `<!DOCTYPE html>
 <html lang="it">
@@ -196,6 +353,14 @@ export function renderSetupPage({ config, storage, actionPath }) {
       </div>
 
       ${renderBanner(storage)}
+
+      <a class="quick-pin-card" href="${escapeHtml(actionPath)}/codice">
+        <span>
+          <strong>🔢 Cambia rapidamente il PIN ospiti</strong>
+          <span>Genera o inserisci un PIN da 4 a 6 cifre, senza modificare il resto della configurazione.</span>
+        </span>
+        <span class="quick-arrow" aria-hidden="true">›</span>
+      </a>
 
       <div class="section">
         <div class="section-title">Impostazioni Generali</div>
@@ -236,12 +401,12 @@ export function renderSetupPage({ config, storage, actionPath }) {
           <label for="accessPin">Codice richiesto all'ingresso (Opzionale)</label>
           <div class="with-toggle">
             <input type="password" id="accessPin" placeholder="Es. 481902" autocomplete="off"
-                   inputmode="numeric">
+                   inputmode="numeric" minlength="4" maxlength="6" pattern="[0-9]{4,6}">
             <button type="button" class="peek" data-peek="accessPin">Mostra</button>
           </div>
           <p class="hint">
-            Da 4 a 12 cifre. Consigliate almeno 6: è un deterrente da cassetta di sicurezza,
-            non una password. La sessione dell'ospite dura 24 ore.
+            Da 4 a 6 cifre. Puoi usare il generatore rapido oppure inserirlo manualmente.
+            La sessione dell'ospite dura 24 ore.
           </p>
         </div>
       </div>
