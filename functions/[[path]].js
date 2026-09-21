@@ -103,6 +103,53 @@ const TRANSLATION_TARGETS = {
   nl: { name: "Dutch", openNow: "NU OPENEN", glossary: "cancello = poort; cancellino = voetgangerspoort; citofono = intercom; portoncino = toegangsdeur" },
 };
 
+const CURATED_TRANSLATIONS = {
+  "Questo sistema ti permette di aprire il cancello elettrico automatico, il portoncino esterno e quello interno. Per qualunque problema contattaci al numero di assistenza.": {
+    "en": "This system allows you to open the automatic electric gate, the external entrance door and the internal entrance door. If you need help, please contact us using the assistance number.",
+    "de": "Mit diesem System können Sie das automatische Einfahrtstor sowie die äußere und die innere Eingangstür öffnen. Bei Problemen kontaktieren Sie uns bitte über die Hilfenummer.",
+    "fr": "Ce système vous permet d’ouvrir le portail électrique automatique ainsi que la porte d’entrée extérieure et la porte intérieure. En cas de problème, contactez-nous au numéro d’assistance.",
+    "es": "Este sistema permite abrir el portón eléctrico automático, la puerta de entrada exterior y la puerta interior. Si tiene algún problema, póngase en contacto con nosotros mediante el número de asistencia.",
+    "nl": "Met dit systeem kunt u de automatische elektrische poort, de buitendeur en de binnendeur openen. Neem bij problemen contact met ons op via het assistentienummer."
+  },
+  "Cancello Esterno": {
+    "en": "External Gate",
+    "de": "Außentor",
+    "fr": "Portail extérieur",
+    "es": "Portón exterior",
+    "nl": "Buitenpoort"
+  },
+  "clicca sul pulsante APRI ORA per aprire il cancello esterno": {
+    "en": "Tap OPEN NOW to open the external gate.",
+    "de": "Tippen Sie auf JETZT ÖFFNEN, um das Außentor zu öffnen.",
+    "fr": "Appuyez sur OUVRIR MAINTENANT pour ouvrir le portail extérieur.",
+    "es": "Pulse ABRIR AHORA para abrir el portón exterior.",
+    "nl": "Tik op NU OPENEN om de buitenpoort te openen."
+  },
+  "Cancellini": {
+    "en": "Pedestrian Gates",
+    "de": "Fußgängertore",
+    "fr": "Portillons",
+    "es": "Puertas peatonales",
+    "nl": "Voetgangerspoorten"
+  },
+  "1) Suona il citofono \"Quintessenza Home\" \n2) Clicca sul pulsante APRI ORA\n(la procedura è la stessa sia per cancellino esterno che per quello interno)": {
+    "en": "1) Ring the “Quintessenza Home” intercom.\n2) Tap OPEN NOW.\n(The procedure is the same for both the external and internal pedestrian gates.)",
+    "de": "1) Klingeln Sie an der Gegensprechanlage „Quintessenza Home“.\n2) Tippen Sie auf JETZT ÖFFNEN.\n(Der Ablauf ist für das äußere und das innere Fußgängertor gleich.)",
+    "fr": "1) Sonnez à l’interphone « Quintessenza Home ».\n2) Appuyez sur OUVRIR MAINTENANT.\n(La procédure est la même pour le portillon extérieur et le portillon intérieur.)",
+    "es": "1) Llame al interfono « Quintessenza Home ».\n2) Pulse ABRIR AHORA.\n(El procedimiento es el mismo para la puerta peatonal exterior y la interior.)",
+    "nl": "1) Bel aan via de intercom “Quintessenza Home”.\n2) Tik op NU OPENEN.\n(De werkwijze is hetzelfde voor de buitenste en de binnenste voetgangerspoort.)"
+  }
+};
+
+function applyCuratedTranslations(field) {
+  const source = String(field[DEFAULT_LANGUAGE] || "").trim();
+  const curated = CURATED_TRANSLATIONS[source];
+  if (!curated) return;
+  for (const language of LANGUAGES) {
+    if (language !== DEFAULT_LANGUAGE && curated[language]) field[language] = curated[language];
+  }
+}
+
 function parseTranslation(result) {
   let value = result && typeof result === "object" ? result.response : result;
   if (value && typeof value === "object") return value;
@@ -203,6 +250,12 @@ async function translateConfig(env, config) {
       config.doors[index].name[language] = door.name;
       config.doors[index].instructions[language] = door.instructions;
     });
+  }
+
+  applyCuratedTranslations(config.instructions);
+  for (const door of config.doors) {
+    applyCuratedTranslations(door.name);
+    applyCuratedTranslations(door.instructions);
   }
 
   config.translation_updated_at = new Date().toISOString();
