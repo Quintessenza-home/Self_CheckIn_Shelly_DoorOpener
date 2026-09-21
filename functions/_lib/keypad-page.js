@@ -10,14 +10,14 @@ const KEYPAD_STYLES = `
     border: 2px solid var(--border-dark); box-shadow: 4px 4px 0px var(--border-dark);
     width: 100%; max-width: 360px; position: relative;
   }
-  .lang-switch { display: flex; gap: 0.3rem; justify-content: center; margin-bottom: 1.1rem; }
+  .lang-switch {\n    position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.3rem;\n    justify-content: flex-end; margin: 0; z-index: 1;\n  }
   .lang-switch button {
     padding: 0.28rem 0.7rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
     text-transform: uppercase; background: transparent; color: var(--text-subtle);
     border: 2px solid var(--border); border-radius: 999px;
   }
   .lang-switch button[aria-pressed="true"] { background: var(--border-dark); color: #fff; border-color: var(--border-dark); }
-  .logo { max-width: 110px; height: auto; margin: 0 auto 1.25rem; display: block; }
+  .logo { max-width: 150px; height: auto; margin: 0 auto 1.25rem; display: block; }
   h1 { font-size: 1.35rem; font-weight: 800; margin: 0.5rem 0 1.25rem; line-height: 1.3; }
   .instructions {
     text-align: left; background: var(--section-bg); border: 2px solid var(--border);
