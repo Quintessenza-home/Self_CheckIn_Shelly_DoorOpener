@@ -4,7 +4,7 @@
 const COOKIE_NAME = "sc_setup";
 const GUEST_COOKIE_NAME = "sc_guest";
 const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 ore (amministratore)
-const GUEST_TTL_SECONDS = 60 * 60 * 12; // 12 ore (ospite)
+const GUEST_TTL_SECONDS = 60 * 60 * 24; // 24 ore (ospite)
 const encoder = new TextEncoder();
 
 /** Confronto a tempo costante, per non far trapelare la password carattere per carattere. */
