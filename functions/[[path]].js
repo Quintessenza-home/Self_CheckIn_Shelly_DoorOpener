@@ -93,37 +93,93 @@ async function handleSetup({ request, env, url, setupPassword }) {
   );
 }
 
-const TRANSLATION_MODEL = "@cf/meta/m2m100-1.2b";
+const TRANSLATION_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-function translatedValue(result) {
-  if (!result || typeof result !== "object") return "";
-  return String(result.translated_text || result.translation || result.response || "").trim();
+const TRANSLATION_TARGETS = {
+  en: { name: "English", openNow: "OPEN NOW", glossary: "cancello = gate or vehicle gate; cancellino = pedestrian gate; citofono = intercom; portoncino = entrance door" },
+  de: { name: "German", openNow: "JETZT ÖFFNEN", glossary: "cancello = Einfahrtstor; cancellino = Fußgängertor; citofono = Gegensprechanlage; portoncino = Eingangstür" },
+  fr: { name: "French", openNow: "OUVRIR MAINTENANT", glossary: "cancello = portail; cancellino = portillon; citofono = interphone; portoncino = porte d’entrée" },
+  es: { name: "Spanish", openNow: "ABRIR AHORA", glossary: "cancello = portón; cancellino = puerta peatonal; citofono = interfono; portoncino = puerta de entrada" },
+  nl: { name: "Dutch", openNow: "NU OPENEN", glossary: "cancello = poort; cancellino = voetgangerspoort; citofono = intercom; portoncino = toegangsdeur" },
+};
+
+function parseTranslation(result) {
+  let value = result && typeof result === "object" ? result.response : result;
+  if (value && typeof value === "object") return value;
+  value = String(value || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  if (!value) throw new Error("risposta di traduzione vuota");
+  return JSON.parse(value);
 }
 
-/** Traduce dal testo italiano master e conserva i risultati nella configurazione. */
+function validateTranslation(value, source, language) {
+  if (!value || typeof value.general_instructions !== "string" || !Array.isArray(value.doors)) {
+    throw new Error("formato non valido per la lingua " + language);
+  }
+  if (value.doors.length !== source.doors.length) {
+    throw new Error("numero di porte non valido per la lingua " + language);
+  }
+  const byId = new Map(value.doors.map((door) => [String(door.id || ""), door]));
+  return {
+    general_instructions: value.general_instructions.trim(),
+    doors: source.doors.map((door) => {
+      const translated = byId.get(door.id);
+      if (!translated || typeof translated.name !== "string" || typeof translated.instructions !== "string") {
+        throw new Error("porta mancante nella lingua " + language);
+      }
+      return {
+        id: door.id,
+        name: translated.name.trim(),
+        instructions: translated.instructions.trim(),
+      };
+    }),
+  };
+}
+
+/** Traduce in un unico passaggio contestuale tutti i testi italiani della configurazione. */
 async function translateConfig(env, config) {
   if (!env.AI || typeof env.AI.run !== "function") {
     throw new Error("il binding Workers AI denominato AI non è disponibile");
   }
 
-  const fields = [config.instructions];
-  for (const door of config.doors) fields.push(door.name, door.instructions);
-  const targets = LANGUAGES.filter((code) => code !== DEFAULT_LANGUAGE);
+  const source = {
+    general_instructions: String(config.instructions[DEFAULT_LANGUAGE] || "").trim(),
+    doors: config.doors.map((door) => ({
+      id: door.id,
+      name: String(door.name[DEFAULT_LANGUAGE] || "").trim(),
+      instructions: String(door.instructions[DEFAULT_LANGUAGE] || "").trim(),
+    })),
+  };
 
-  for (const language of targets) {
-    const translated = await Promise.all(fields.map(async (field) => {
-      const source = String(field[DEFAULT_LANGUAGE] || "").trim();
-      if (!source) return "";
-      const result = await env.AI.run(TRANSLATION_MODEL, {
-        text: source,
-        source_lang: DEFAULT_LANGUAGE,
-        target_lang: language,
-      });
-      const value = translatedValue(result);
-      if (!value) throw new Error("risposta vuota per la lingua " + language);
-      return value;
-    }));
-    fields.forEach((field, index) => { field[language] = translated[index]; });
+  for (const language of LANGUAGES.filter((code) => code !== DEFAULT_LANGUAGE)) {
+    const target = TRANSLATION_TARGETS[language];
+    if (!target) throw new Error("lingua di destinazione non supportata: " + language);
+    const prompt = [
+      "Translate this Italian guest-access configuration into natural, concise " + target.name + ".",
+      "Return only a JSON object with exactly this shape: {\"general_instructions\":\"...\",\"doors\":[{\"id\":\"...\",\"name\":\"...\",\"instructions\":\"...\"}]}",
+      "Keep every door id unchanged and keep the doors in the same order.",
+      "Preserve every numbered step, line break, parenthetical note and assistance sentence.",
+      "Keep the brand name Quintessenza Home unchanged.",
+      "Translate the button words APRI ORA exactly as " + target.openNow + ".",
+      "Use this terminology: " + target.glossary + ".",
+      "Use polite language suitable for guests of all ages. Do not add or remove information.",
+      "Italian source JSON:",
+      JSON.stringify(source),
+    ].join("\n");
+    const result = await env.AI.run(TRANSLATION_MODEL, {
+      messages: [
+        { role: "system", content: "You are a precise hospitality translator. Output valid JSON only." },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+      max_tokens: 1800,
+    });
+    const translated = validateTranslation(parseTranslation(result), source, language);
+    config.instructions[language] = translated.general_instructions;
+    translated.doors.forEach((door, index) => {
+      config.doors[index].name[language] = door.name;
+      config.doors[index].instructions[language] = door.instructions;
+    });
   }
 
   config.translation_updated_at = new Date().toISOString();
