@@ -21,18 +21,32 @@ const KEYPAD_STYLES = `
     background: linear-gradient(90deg, #b79355, #d4bd8a 52%, #2f6b4f);
   }
   .lang-switch {
-    position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.4rem;
-    justify-content: flex-end; margin: 0; z-index: 1;
+    position: absolute; top: 1rem; right: 1rem; margin: 0; z-index: 30;
   }
   .lang-switch button {
-    min-width: 48px; min-height: 40px; padding: 0.4rem 0.7rem;
-    font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em;
-    text-transform: uppercase; background: #fff; color: #4a4741;
-    border: 2px solid #d8d2c7; border-radius: 999px;
+    min-height: 44px; font-size: 0.92rem; font-weight: 800;
+    background: #fff; color: #34322e; border: 2px solid #d8d2c7;
+    cursor: pointer; touch-action: manipulation;
   }
-  .lang-switch button[aria-pressed="true"] {
-    background: #2d2b27; color: #fff; border-color: #2d2b27;
+  .lang-toggle {
+    min-width: 106px; padding: 0.45rem 0.7rem; border-radius: 999px;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.45rem;
   }
+  .lang-toggle .chevron { font-size: 0.72rem; color: #66615a; }
+  .lang-menu {
+    display: none; position: absolute; top: calc(100% + 0.5rem); right: 0;
+    width: 220px; padding: 0.45rem; background: #fff;
+    border: 2px solid #2d2b27; border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(42, 37, 29, 0.2);
+  }
+  .lang-switch.open .lang-menu { display: block; }
+  .lang-menu button {
+    width: 100%; min-height: 48px; padding: 0.65rem 0.8rem; border: 0;
+    border-radius: 9px; display: flex; align-items: center; gap: 0.7rem;
+    text-align: left; letter-spacing: 0;
+  }
+  .lang-menu button:hover, .lang-menu button:focus-visible { background: #f4f1ea; }
+  .lang-menu button[aria-current="true"] { background: #2d2b27; color: #fff; }
   .logo { max-width: 165px; height: auto; margin: 0 auto 1.15rem; display: block; }
   .box .badge {
     font-size: 0.78rem; line-height: 1.4; letter-spacing: 0.14em;
@@ -133,7 +147,7 @@ const KEYPAD_STYLES = `
 
   @media (max-width: 360px) {
     .box { padding-left: 1rem; padding-right: 1rem; }
-    .lang-switch button { min-width: 44px; padding-inline: 0.55rem; }
+    .lang-toggle { min-width: 96px; padding-inline: 0.6rem; }
     .emergency a { font-size: 0.86rem; }
     .logo { max-width: 145px; }
     h1 { font-size: 1.48rem; }
@@ -260,21 +274,63 @@ export function renderKeypadPage({ data }) {
       var container = document.getElementById('langSwitch');
       container.innerHTML = '';
       if (data.languages.length < 2) return;
+
+      var toggle = h('button', 'lang-toggle');
+      toggle.type = 'button';
+      toggle.setAttribute('aria-haspopup', 'listbox');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', T('language_selector'));
+      toggle.appendChild(h('span', null, (data.languageFlags[lang] || '🌐') + ' ' + (data.languageLabels[lang] || lang)));
+      toggle.appendChild(h('span', 'chevron', '▼'));
+
+      var menu = h('div', 'lang-menu');
+      menu.setAttribute('role', 'listbox');
+      menu.setAttribute('aria-label', T('languages_available'));
+      menu.hidden = true;
+
       data.languages.forEach(function (code) {
-        var button = h('button', null, code.toUpperCase());
-        button.type = 'button';
-        button.setAttribute('aria-pressed', code === lang ? 'true' : 'false');
-        button.setAttribute('aria-label', data.languageLabels[code] || code);
-        button.addEventListener('click', function () {
-          if (code === lang) return;
-          lang = code;
-          try { window.localStorage.setItem('sc_lang', code); } catch (error) { /* ignora */ }
-          status('');
-          render();
+        var option = h('button', null, (data.languageFlags[code] || '🌐') + ' ' + (data.languageLabels[code] || code));
+        option.type = 'button';
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-current', code === lang ? 'true' : 'false');
+        option.addEventListener('click', function () {
+          if (code !== lang) {
+            lang = code;
+            try { window.localStorage.setItem('sc_lang', code); } catch (error) { /* ignora */ }
+            status('');
+            render();
+          }
         });
-        container.appendChild(button);
+        menu.appendChild(option);
       });
+
+      toggle.addEventListener('click', function (event) {
+        event.stopPropagation();
+        var open = container.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        menu.hidden = !open;
+      });
+      menu.addEventListener('click', function (event) { event.stopPropagation(); });
+      container.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        container.classList.remove('open');
+        menu.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.focus();
+      });
+      container.appendChild(toggle);
+      container.appendChild(menu);
     }
+
+    document.addEventListener('click', function () {
+      var container = document.getElementById('langSwitch');
+      if (!container || !container.classList.contains('open')) return;
+      container.classList.remove('open');
+      var toggle = container.querySelector('.lang-toggle');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      var menu = container.querySelector('.lang-menu');
+      if (menu) menu.hidden = true;
+    });
 
     function renderLocked() {
       title(T('locked_title'));

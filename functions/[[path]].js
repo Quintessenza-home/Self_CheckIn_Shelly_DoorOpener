@@ -9,7 +9,7 @@ import {
   isAuthenticated, createSessionToken, sessionCookie, clearSessionCookie, safeEqual,
   createGuestToken, guestCookie, hasGuestAccess,
 } from "./_lib/auth.js";
-import { STRINGS, LANGUAGE_LABELS, resolveLanguage, pickText, t } from "./_lib/i18n.js";
+import { STRINGS, LANGUAGE_LABELS, LANGUAGE_FLAGS, LANGUAGES, DEFAULT_LANGUAGE, resolveLanguage, pickText, t } from "./_lib/i18n.js";
 import { openDoor } from "./_lib/shelly.js";
 import { renderLoginPage, renderSetupPage } from "./_lib/setup-page.js";
 import { renderKeypadPage } from "./_lib/keypad-page.js";
@@ -93,6 +93,43 @@ async function handleSetup({ request, env, url, setupPassword }) {
   );
 }
 
+const TRANSLATION_MODEL = "@cf/meta/m2m100-1.2b";
+
+function translatedValue(result) {
+  if (!result || typeof result !== "object") return "";
+  return String(result.translated_text || result.translation || result.response || "").trim();
+}
+
+/** Traduce dal testo italiano master e conserva i risultati nella configurazione. */
+async function translateConfig(env, config) {
+  if (!env.AI || typeof env.AI.run !== "function") {
+    throw new Error("il binding Workers AI denominato AI non è disponibile");
+  }
+
+  const fields = [config.instructions];
+  for (const door of config.doors) fields.push(door.name, door.instructions);
+  const targets = LANGUAGES.filter((code) => code !== DEFAULT_LANGUAGE);
+
+  for (const language of targets) {
+    const translated = await Promise.all(fields.map(async (field) => {
+      const source = String(field[DEFAULT_LANGUAGE] || "").trim();
+      if (!source) return "";
+      const result = await env.AI.run(TRANSLATION_MODEL, {
+        text: source,
+        source_lang: DEFAULT_LANGUAGE,
+        target_lang: language,
+      });
+      const value = translatedValue(result);
+      if (!value) throw new Error("risposta vuota per la lingua " + language);
+      return value;
+    }));
+    fields.forEach((field, index) => { field[language] = translated[index]; });
+  }
+
+  config.translation_updated_at = new Date().toISOString();
+  return config;
+}
+
 async function handleSetupAction({ request, env }) {
   let body;
   try {
@@ -108,13 +145,13 @@ async function handleSetupAction({ request, env }) {
       return jsonResponse({ ok: false, msg: errors[0], errors });
     }
     try {
+      await translateConfig(env, config);
       await saveConfig(env, config);
     } catch (error) {
-      return jsonResponse({ ok: false, msg: error.message });
+      return jsonResponse({ ok: false, msg: "Traduzione o salvataggio non riusciti: " + error.message });
     }
-    // La configurazione normalizzata torna al client, che si riallinea
-    // (es. credenziali comuni promosse ad account condiviso).
-    return jsonResponse({ ok: true, msg: "Configurazione salvata ✅", config });
+    // La configurazione normalizzata e tradotta torna al client.
+    return jsonResponse({ ok: true, msg: "Configurazione e traduzioni salvate ✅", config });
   }
 
   if (body.action === "test") {
@@ -195,6 +232,7 @@ async function handlePublic({ request, env, url }) {
         lang,
         languages: config.languages,
         languageLabels: LANGUAGE_LABELS,
+        languageFlags: LANGUAGE_FLAGS,
         ui: uiStrings(config.languages),
         locked: !unlocked,
         setupPath: SETUP_PATH,

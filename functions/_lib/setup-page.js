@@ -52,6 +52,9 @@ const SETUP_STYLES = `
     letter-spacing: 0; font-size: 0.95rem; color: var(--text-main); margin: 0; cursor: pointer;
   }
   .lang-picker input { width: auto; padding: 0; margin: 0; accent-color: var(--border-dark); }
+  .language-summary { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.75rem; }
+  .language-chip { padding: 0.45rem 0.65rem; background: #fff; border: 2px solid var(--border); border-radius: 999px; font-size: 0.82rem; font-weight: 700; }
+  .translation-state { margin-top: 0.75rem; padding: 0.7rem 0.8rem; border-radius: 9px; background: #f0fdf4; color: #14532d; font-size: 0.82rem; font-weight: 700; line-height: 1.4; }
   .door { background: var(--card-bg); border: 2px solid var(--border-dark); border-radius: 10px; padding: 1.1rem; margin-bottom: 1rem; }
   .door-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
   .door-head .title { font-weight: 800; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -205,16 +208,16 @@ export function renderSetupPage({ config, storage, actionPath }) {
         </div>
         <div class="field">
           <label>Lingue del sito</label>
-          <div class="lang-picker">${renderLanguageCheckboxes()}</div>
-          <p class="hint">
-            L'ospite vede un selettore di lingua e il sito parte nella lingua del suo telefono.
-            Testi dei pulsanti e messaggi sono già tradotti; nomi e istruzioni li scrivi tu qui sotto.
-          </p>
-        </div>
-        <div class="field">
-          <label for="defaultLanguage">Lingua predefinita</label>
-          <select id="defaultLanguage"></select>
-          <p class="hint">Usata quando la lingua del telefono non è fra quelle attivate, e come testo di ricaduta.</p>
+          <div class="language-summary" aria-label="Lingue attive">
+            <span class="language-chip">🇮🇹 Italiano</span>
+            <span class="language-chip">🇬🇧 English</span>
+            <span class="language-chip">🇩🇪 Deutsch</span>
+            <span class="language-chip">🇫🇷 Français</span>
+            <span class="language-chip">🇪🇸 Español</span>
+            <span class="language-chip">🇳🇱 Nederlands</span>
+          </div>
+          <p class="hint">Italiano è la lingua predefinita. Scrivi i contenuti in italiano: le altre cinque versioni vengono generate automaticamente quando salvi.</p>
+          <div class="translation-state" id="translationStatus"></div>
         </div>
         <div class="field">
           <label for="emergency">Telefono Assistenza (Opzionale)</label>
@@ -244,10 +247,10 @@ export function renderSetupPage({ config, storage, actionPath }) {
       </div>
 
       <div class="section">
-        <div class="section-title">Istruzioni per gli Ospiti</div>
+        <div class="section-title">Istruzioni per gli Ospiti · Italiano</div>
         <p class="section-intro">
           Testo mostrato nella pagina di apertura. Usalo per spiegare dove si trovano gli
-          ingressi o come funziona il citofono. Puoi lasciarlo vuoto.
+          ingressi o come funziona il citofono. Puoi lasciarlo vuoto. Le traduzioni vengono aggiornate al salvataggio.
         </p>
         <div id="generalInstructions"></div>
       </div>
@@ -407,37 +410,36 @@ export function renderSetupPage({ config, storage, actionPath }) {
       return wrap;
     }
 
-    /** Campo con una riga per ogni lingua attiva (nomi, istruzioni). */
+    /** Campo italiano master: le traduzioni vengono generate sul server al salvataggio. */
     function localizedField(labelText, target, options) {
       options = options || {};
       var wrap = h('div', { class: 'field' });
       wrap.appendChild(h('label', {}, labelText));
 
-      state.languages.forEach(function (code) {
-        var row = h('div', { class: 'loc-row' });
-        if (state.languages.length > 1) row.appendChild(h('span', { class: 'loc-tag' }, code));
+      var row = h('div', { class: 'loc-row' });
+      row.appendChild(h('span', { class: 'loc-tag' }, 'IT'));
 
-        var control;
-        if (options.multiline) {
-          control = document.createElement('textarea');
-          control.rows = options.rows || 3;
-        } else {
-          control = document.createElement('input');
-          control.type = 'text';
-          control.autocomplete = 'off';
-        }
-        control.value = target[code] || '';
-        control.placeholder = (options.placeholders && options.placeholders[code]) || '';
-        control.addEventListener('input', function () {
-          target[code] = control.value;
-          markDirty();
-          if (options.onInput) options.onInput();
-        });
-
-        row.appendChild(control);
-        wrap.appendChild(row);
+      var control;
+      if (options.multiline) {
+        control = document.createElement('textarea');
+        control.rows = options.rows || 3;
+      } else {
+        control = document.createElement('input');
+        control.type = 'text';
+        control.autocomplete = 'off';
+      }
+      control.value = target.it || '';
+      control.placeholder = (options.placeholders && options.placeholders.it) || '';
+      control.addEventListener('input', function () {
+        target.it = control.value;
+        state.translation_updated_at = '';
+        markDirty();
+        renderTranslationStatus();
+        if (options.onInput) options.onInput();
       });
 
+      row.appendChild(control);
+      wrap.appendChild(row);
       if (options.hint) wrap.appendChild(h('p', { class: 'hint' }, options.hint));
       return wrap;
     }
@@ -506,12 +508,12 @@ export function renderSetupPage({ config, storage, actionPath }) {
       head.appendChild(tools);
       card.appendChild(head);
 
-      card.appendChild(localizedField('Nome identificativo', door.name, {
+      card.appendChild(localizedField('Nome identificativo in italiano', door.name, {
         placeholders: { it: 'Es. Cancello Esterno', en: 'Es. Outer Gate' },
         onInput: function () { head.querySelector('.title').textContent = headingText(); }
       }));
 
-      card.appendChild(localizedField('Istruzioni per questa apertura (opzionale)', door.instructions, {
+      card.appendChild(localizedField('Istruzioni in italiano per questa apertura (opzionale)', door.instructions, {
         multiline: true,
         placeholders: {
           it: 'Es. Suona dal citofono esterno, poi premi Apri ora.',
@@ -598,7 +600,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
     function renderGeneralInstructions() {
       var container = document.getElementById('generalInstructions');
       container.innerHTML = '';
-      container.appendChild(localizedField('Istruzioni generali (opzionale)', state.instructions, {
+      container.appendChild(localizedField('Istruzioni generali in italiano (opzionale)', state.instructions, {
         multiline: true,
         rows: 4,
         placeholders: {
@@ -608,35 +610,12 @@ export function renderSetupPage({ config, storage, actionPath }) {
       }));
     }
 
-    function renderLanguageControls() {
-      LANGS.forEach(function (code) {
-        var box = document.getElementById('lang_' + code);
-        box.checked = state.languages.indexOf(code) !== -1;
-      });
-      var select = document.getElementById('defaultLanguage');
-      select.innerHTML = '';
-      state.languages.forEach(function (code) {
-        var option = h('option', { value: code }, LANG_LABELS[code]);
-        select.appendChild(option);
-      });
-      select.value = state.default_language;
-    }
-
-    function onLanguageToggle() {
-      var next = LANGS.filter(function (code) {
-        return document.getElementById('lang_' + code).checked;
-      });
-      if (!next.length) {
-        // Almeno una lingua deve restare attiva.
-        document.getElementById('lang_' + state.languages[0]).checked = true;
-        return;
-      }
-      state.languages = next;
-      if (next.indexOf(state.default_language) === -1) state.default_language = next[0];
-      markDirty();
-      renderLanguageControls();
-      renderGeneralInstructions();
-      renderDoors();
+    function renderTranslationStatus() {
+      var node = document.getElementById('translationStatus');
+      if (!node) return;
+      node.textContent = state.translation_updated_at
+        ? 'Traduzioni automatiche aggiornate ✓'
+        : 'Le traduzioni verranno generate al prossimo salvataggio.';
     }
 
     function api(payload) {
@@ -681,7 +660,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
 
     function renderAll() {
       syncGeneralFields();
-      renderLanguageControls();
+      renderTranslationStatus();
       renderGeneralInstructions();
       renderDoors();
     }
@@ -689,10 +668,6 @@ export function renderSetupPage({ config, storage, actionPath }) {
     function bindGeneralFields() {
       document.getElementById('mode').addEventListener('change', function (event) {
         state.mode = event.target.value;
-        markDirty();
-      });
-      document.getElementById('defaultLanguage').addEventListener('change', function (event) {
-        state.default_language = event.target.value;
         markDirty();
       });
       document.getElementById('emergency').addEventListener('input', function (event) {
@@ -710,9 +685,6 @@ export function renderSetupPage({ config, storage, actionPath }) {
       document.getElementById('sharedKey').addEventListener('input', function (event) {
         state.shelly.auth_key = event.target.value;
         markDirty();
-      });
-      LANGS.forEach(function (code) {
-        document.getElementById('lang_' + code).addEventListener('change', onLanguageToggle);
       });
       document.querySelectorAll('[data-peek]').forEach(function (button) {
         button.addEventListener('click', function () {
@@ -760,10 +732,11 @@ export function renderSetupPage({ config, storage, actionPath }) {
 
           state = {
             mode: parsed.mode === 'choice' ? 'choice' : 'sequence',
-            languages: languages,
-            default_language: defaultLanguage,
+            languages: LANGS.slice(),
+            default_language: 'it',
             emergency_contact: parsed.emergency_contact || '',
             access_pin: parsed.access_pin || '',
+            translation_updated_at: parsed.translation_updated_at || '',
             instructions: importText(parsed.instructions, defaultLanguage),
             shelly: {
               server: (parsed.shelly && parsed.shelly.server) || parsed.server || '',
