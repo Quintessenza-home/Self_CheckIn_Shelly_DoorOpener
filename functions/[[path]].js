@@ -167,11 +167,14 @@ function uiStrings(languages) {
   return subset;
 }
 
-function languageFor(config, { explicit, request }) {
+function languageFor(config, { explicit }) {
+  // Per i nuovi visitatori parte sempre l'italiano, se attivo.
+  // Una scelta esplicita (?lang= o selettore) continua ad avere precedenza.
+  const initialLanguage = config.languages.includes("it") ? "it" : config.default_language;
   return resolveLanguage({
     explicit,
-    acceptLanguage: request.headers.get("Accept-Language"),
-    fallback: config.default_language,
+    acceptLanguage: "",
+    fallback: initialLanguage,
     available: config.languages,
   });
 }
