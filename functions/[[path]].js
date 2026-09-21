@@ -336,14 +336,14 @@ function uiStrings(languages) {
   return subset;
 }
 
-function languageFor(config, { explicit }) {
-  // Per i nuovi visitatori parte sempre l'italiano, se attivo.
-  // Una scelta esplicita (?lang= o selettore) continua ad avere precedenza.
-  const initialLanguage = config.languages.includes("it") ? "it" : config.default_language;
+function languageFor(config, { explicit, request }) {
+  // Priorità: scelta esplicita, lingua del telefono/browser, inglese.
+  // La scelta manuale del selettore viene inoltre conservata nel browser.
+  const fallbackLanguage = config.languages.includes("en") ? "en" : config.default_language;
   return resolveLanguage({
     explicit,
-    acceptLanguage: "",
-    fallback: initialLanguage,
+    acceptLanguage: request ? request.headers.get("Accept-Language") || "" : "",
+    fallback: fallbackLanguage,
     available: config.languages,
   });
 }
