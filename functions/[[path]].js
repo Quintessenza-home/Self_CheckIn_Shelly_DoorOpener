@@ -11,10 +11,11 @@ import {
 } from "./_lib/auth.js";
 import { STRINGS, LANGUAGE_LABELS, LANGUAGE_FLAGS, LANGUAGES, DEFAULT_LANGUAGE, resolveLanguage, pickText, t } from "./_lib/i18n.js";
 import { openDoor } from "./_lib/shelly.js";
-import { renderLoginPage, renderSetupPage } from "./_lib/setup-page.js";
+import { renderLoginPage, renderSetupPage, renderGuestPinPage } from "./_lib/setup-page.js";
 import { renderKeypadPage } from "./_lib/keypad-page.js";
 
 const SETUP_PATH = "/setup";
+const QUICK_PIN_PATH = "/setup/codice";
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -25,7 +26,7 @@ export async function onRequest(context) {
   }
   const setupPassword = env.SETUP_PASSWORD || "admin";
 
-  if (url.pathname === SETUP_PATH || url.pathname.endsWith("/setup")) {
+  if (url.pathname === SETUP_PATH || url.pathname === QUICK_PIN_PATH || url.pathname.endsWith("/setup")) {
     return handleSetup({ request, env, url, setupPassword });
   }
   return handlePublic({ request, env, url });
@@ -88,6 +89,14 @@ async function handleSetup({ request, env, url, setupPassword }) {
   }
 
   const { config, source, storeName, writable } = await loadConfig(env);
+  if (url.pathname === QUICK_PIN_PATH) {
+    return htmlResponse(renderGuestPinPage({
+      accessPin: config.access_pin,
+      actionPath: setupPath,
+      setupPath: SETUP_PATH,
+      publicUrl: url.origin,
+    }));
+  }
   return htmlResponse(
     renderSetupPage({ config, storage: { source, storeName, writable }, actionPath: setupPath })
   );
@@ -268,6 +277,22 @@ async function handleSetupAction({ request, env }) {
     body = await request.json();
   } catch {
     return jsonResponse({ ok: false, msg: "Richiesta non valida." }, { status: 400 });
+  }
+
+
+  if (body.action === "save-access-pin") {
+    const accessPin = String(body.access_pin || "").trim();
+    if (!/^[0-9]{4,6}$/.test(accessPin)) {
+      return jsonResponse({ ok: false, msg: "Il PIN deve contenere da 4 a 6 cifre." }, { status: 400 });
+    }
+    try {
+      const { config } = await loadConfig(env);
+      config.access_pin = accessPin;
+      await saveConfig(env, config);
+      return jsonResponse({ ok: true, msg: "Nuovo PIN ospiti attivato ✅" });
+    } catch (error) {
+      return jsonResponse({ ok: false, msg: "Salvataggio del PIN non riuscito: " + error.message }, { status: 500 });
+    }
   }
 
   if (body.action === "save") {
