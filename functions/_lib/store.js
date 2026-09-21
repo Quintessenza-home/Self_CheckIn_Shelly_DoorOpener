@@ -62,6 +62,7 @@ export function emptyConfig() {
     default_language: DEFAULT_LANGUAGE,
     emergency_contact: "",
     access_pin: "",
+    translation_updated_at: "",
     instructions: emptyText(),
     shelly: { server: "", auth_key: "" },
     doors: [],
@@ -105,16 +106,14 @@ export function normalizeConfig(raw) {
 
   config.mode = raw.mode === "choice" ? "choice" : "sequence";
 
-  config.default_language = isLanguage(raw.default_language) ? raw.default_language : DEFAULT_LANGUAGE;
-  const requested = Array.isArray(raw.languages) ? raw.languages.filter(isLanguage) : null;
-  config.languages = requested && requested.length ? [...new Set(requested)] : [...LANGUAGES];
-  // La lingua predefinita deve essere fra quelle attive.
-  if (!config.languages.includes(config.default_language)) {
-    config.default_language = config.languages[0];
-  }
+  // Le lingue pubbliche sono fisse: italiano predefinito più cinque traduzioni.
+  // I vecchi valori configurabili restano accettati, ma vengono normalizzati.
+  config.default_language = DEFAULT_LANGUAGE;
+  config.languages = [...LANGUAGES];
 
   config.emergency_contact = str(raw.emergency_contact);
   config.access_pin = str(raw.access_pin);
+  config.translation_updated_at = str(raw.translation_updated_at);
   config.instructions = localizedText(raw.instructions, config.default_language);
 
   const shared = raw.shelly && typeof raw.shelly === "object" ? raw.shelly : {};
