@@ -6,7 +6,7 @@ import { BASE_STYLES, jsonForScript } from "./html.js";
 const KEYPAD_STYLES = `
   body {
     display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; min-height: 100dvh; padding: 2rem 1rem 7rem;
+    min-height: 100vh; min-height: 100dvh; padding: 2rem 1rem;
     background: linear-gradient(145deg, #f8f4ec 0%, #fbfaf7 48%, #eef4ef 100%);
     font-size: 18px;
   }
@@ -98,23 +98,21 @@ const KEYPAD_STYLES = `
   }
   .emergency {
     position: fixed; left: 50%; bottom: max(0.75rem, env(safe-area-inset-bottom));
-    transform: translateX(-50%); z-index: 20; width: min(calc(100% - 2rem), 430px);
-    margin: 0; padding: 0.55rem; background: rgba(255, 250, 247, 0.97);
-    border: 2px solid #c77867; border-radius: 16px;
-    box-shadow: 0 8px 28px rgba(79, 39, 31, 0.2); backdrop-filter: blur(8px);
+    transform: translateX(-50%); z-index: 20; width: max-content;
+    max-width: calc(100% - 2rem); margin: 0; padding: 0;
   }
   .emergency a {
-    display: flex; align-items: center; justify-content: center; min-height: 56px;
-    color: #923b2b; text-decoration: none; font-size: 1rem; font-weight: 800;
-    text-transform: uppercase; letter-spacing: 0.045em;
+    display: flex; align-items: center; justify-content: center; min-height: 48px;
+    padding: 0 0.4rem; color: #923b2b; text-decoration: none;
+    font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.035em;
   }
   .setup-hint a { color: #2f6b4f; font-weight: 800; }
 
   @media (max-width: 480px) {
-    body { align-items: flex-start; padding: 0 0 7rem; background: #fff; }
+    body { align-items: flex-start; padding: 0; background: #fff; }
     .box {
       max-width: none; min-height: 100vh; min-height: 100dvh;
-      padding: 4.75rem 1.25rem 8rem; border: 0; border-radius: 0;
+      padding: 4.75rem 1.25rem 2rem; border: 0; border-radius: 0;
       box-shadow: none; overflow: visible;
     }
     .box::before { height: 5px; }
@@ -123,12 +121,20 @@ const KEYPAD_STYLES = `
     h1 { font-size: 1.55rem; margin-bottom: 1.35rem; }
     .instructions { padding: 1rem; margin-bottom: 1.15rem; }
     button.action { min-height: 64px; }
-    .emergency { width: calc(100% - 1rem); bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+    .emergency {
+      top: 0.75rem; left: 0.75rem; bottom: auto; transform: none;
+      width: auto; max-width: calc(100% - 8.25rem);
+    }
+    .emergency a {
+      justify-content: flex-start; min-height: 40px; padding: 0;
+      font-size: 0.9rem; letter-spacing: 0.02em; white-space: nowrap;
+    }
   }
 
   @media (max-width: 360px) {
     .box { padding-left: 1rem; padding-right: 1rem; }
     .lang-switch button { min-width: 44px; padding-inline: 0.55rem; }
+    .emergency a { font-size: 0.86rem; }
     .logo { max-width: 145px; }
     h1 { font-size: 1.48rem; }
   }
