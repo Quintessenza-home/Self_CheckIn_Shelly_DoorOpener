@@ -170,7 +170,30 @@ async function translateConfig(env, config) {
         { role: "system", content: "You are a precise hospitality translator. Output valid JSON only." },
         { role: "user", content: prompt },
       ],
-      response_format: { type: "json_object" },
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            general_instructions: { type: "string" },
+            doors: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  instructions: { type: "string" },
+                },
+                required: ["id", "name", "instructions"],
+              },
+            },
+          },
+          required: ["general_instructions", "doors"],
+        },
+      },
       temperature: 0.1,
       max_tokens: 1800,
     });
