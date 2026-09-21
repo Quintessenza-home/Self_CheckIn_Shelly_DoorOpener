@@ -160,7 +160,7 @@ const KEYPAD_STYLES = `
   @media (orientation: landscape) and (max-height: 500px) {
     body { align-items: flex-start; padding: 0.5rem 1rem; font-size: 16px; }
     .box {
-      max-width: 520px; padding: 2.9rem 1.25rem 0.85rem;
+      max-width: 520px; padding: 2.9rem 1.25rem 0.85rem; overflow: visible;
       border-radius: 18px; box-shadow: 0 10px 30px rgba(42, 37, 29, 0.12), 4px 4px 0 #2d2b27;
     }
     .logo { max-width: 82px; margin-bottom: 0.25rem; }
