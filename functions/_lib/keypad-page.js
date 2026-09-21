@@ -286,6 +286,7 @@ export function renderKeypadPage({ data }) {
       var menu = h('div', 'lang-menu');
       menu.setAttribute('role', 'listbox');
       menu.setAttribute('aria-label', T('languages_available'));
+      menu.hidden = true;
 
       data.languages.forEach(function (code) {
         var option = h('button', null, (data.languageFlags[code] || '🌐') + ' ' + (data.languageLabels[code] || code));
@@ -307,8 +308,16 @@ export function renderKeypadPage({ data }) {
         event.stopPropagation();
         var open = container.classList.toggle('open');
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        menu.hidden = !open;
       });
       menu.addEventListener('click', function (event) { event.stopPropagation(); });
+      container.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        container.classList.remove('open');
+        menu.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.focus();
+      });
       container.appendChild(toggle);
       container.appendChild(menu);
     }
@@ -319,6 +328,8 @@ export function renderKeypadPage({ data }) {
       container.classList.remove('open');
       var toggle = container.querySelector('.lang-toggle');
       if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      var menu = container.querySelector('.lang-menu');
+      if (menu) menu.hidden = true;
     });
 
     function renderLocked() {
