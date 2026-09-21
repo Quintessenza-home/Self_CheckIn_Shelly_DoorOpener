@@ -241,7 +241,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
           </div>
           <p class="hint">
             Da 4 a 12 cifre. Consigliate almeno 6: è un deterrente da cassetta di sicurezza,
-            non una password. La sessione dell'ospite dura 12 ore.
+            non una password. La sessione dell'ospite dura 24 ore.
           </p>
         </div>
       </div>
