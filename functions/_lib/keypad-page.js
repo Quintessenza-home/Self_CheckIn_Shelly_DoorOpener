@@ -39,12 +39,12 @@ const KEYPAD_STYLES = `
   }
   button.action:active { transform: scale(0.97); }
   button.action:disabled { background: #a1a1aa; border-color: #a1a1aa; cursor: not-allowed; }
-  .btn-open {
+  button.action.btn-open {
     background: #2f6b4f; border-color: #24543e; color: #fff;
     box-shadow: 0 4px 0 #1d422f; font-size: 1.05rem;
   }
-  .btn-open:hover { background: #285f46; }
-  .btn-open:active { box-shadow: 0 1px 0 #1d422f; transform: translateY(3px); }
+  button.action.btn-open:hover { background: #285f46; }
+  button.action.btn-open:active { box-shadow: 0 1px 0 #1d422f; transform: translateY(3px); }
     .btn-choice { background: #fff; color: var(--text-main); box-shadow: 2px 2px 0px var(--border-dark); }
   .btn-choice:active { box-shadow: 0px 0px 0px var(--border-dark); }
   .btn-back { background: transparent; color: var(--text-subtle); border-color: var(--border); }
