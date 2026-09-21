@@ -33,6 +33,7 @@ const KEYPAD_STYLES = `
     display: flex; align-items: center; justify-content: space-between; gap: 0.45rem;
   }
   .lang-toggle .chevron { font-size: 0.72rem; color: #66615a; }
+  .lang-current-short { display: none; }
   .lang-menu {
     display: none; position: absolute; top: calc(100% + 0.5rem); right: 0;
     width: 220px; padding: 0.45rem; background: #fff;
@@ -147,7 +148,9 @@ const KEYPAD_STYLES = `
 
   @media (max-width: 360px) {
     .box { padding-left: 1rem; padding-right: 1rem; }
-    .lang-toggle { min-width: 96px; padding-inline: 0.6rem; }
+    .lang-toggle { min-width: 86px; padding-inline: 0.55rem; }
+    .lang-current-full { display: none; }
+    .lang-current-short { display: inline; }
     .emergency a { font-size: 0.86rem; }
     .logo { max-width: 145px; }
     h1 { font-size: 1.48rem; }
@@ -280,7 +283,8 @@ export function renderKeypadPage({ data }) {
       toggle.setAttribute('aria-haspopup', 'listbox');
       toggle.setAttribute('aria-expanded', 'false');
       toggle.setAttribute('aria-label', T('language_selector'));
-      toggle.appendChild(h('span', null, (data.languageFlags[lang] || '🌐') + ' ' + (data.languageLabels[lang] || lang)));
+      toggle.appendChild(h('span', 'lang-current-full', (data.languageFlags[lang] || '🌐') + ' ' + (data.languageLabels[lang] || lang)));
+      toggle.appendChild(h('span', 'lang-current-short', (data.languageFlags[lang] || '🌐') + ' ' + lang.toUpperCase()));
       toggle.appendChild(h('span', 'chevron', '▼'));
 
       var menu = h('div', 'lang-menu');
