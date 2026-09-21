@@ -174,8 +174,8 @@ export function validateConfig(config) {
   if (!Array.isArray(config.doors) || config.doors.length === 0) {
     errors.push("Aggiungi almeno una porta.");
   }
-  if (config.access_pin && !/^[0-9]{4,12}$/.test(config.access_pin)) {
-    errors.push("Il codice di accesso deve contenere da 4 a 12 cifre.");
+  if (config.access_pin && !/^[0-9]{4,6}$/.test(config.access_pin)) {
+    errors.push("Il codice di accesso deve contenere da 4 a 6 cifre.");
   }
   config.doors.forEach((door, index) => {
     const position = `Porta #${index + 1}`;
