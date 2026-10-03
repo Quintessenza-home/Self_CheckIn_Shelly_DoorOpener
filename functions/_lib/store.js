@@ -12,7 +12,7 @@ import { normalizeShellyServer } from "./shelly.js";
 import { LANGUAGES, DEFAULT_LANGUAGE, isLanguage } from "./i18n.js";
 
 export const CONFIG_KEY = "config";
-export const GUIDE_STEP_IDS = ["parking", "outer_gate", "inner_gate", "key_box"];
+export const GUIDE_STEP_IDS = ["vehicle_gate", "parking", "outer_gate", "inner_gate", "key_box"];
 export const MAX_GUIDE_IMAGE_CHARS = 850000;
 
 // Nomi di binding riconosciuti automaticamente, in ordine di preferenza.
