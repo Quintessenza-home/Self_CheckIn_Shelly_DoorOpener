@@ -12,6 +12,8 @@ import { normalizeShellyServer } from "./shelly.js";
 import { LANGUAGES, DEFAULT_LANGUAGE, isLanguage } from "./i18n.js";
 
 export const CONFIG_KEY = "config";
+export const GUIDE_STEP_IDS = ["parking", "outer_gate", "inner_gate", "key_box"];
+export const MAX_GUIDE_IMAGE_CHARS = 850000;
 
 // Nomi di binding riconosciuti automaticamente, in ordine di preferenza.
 const PREFERRED_BINDINGS = [
@@ -64,9 +66,16 @@ export function emptyConfig() {
     access_pin: "",
     translation_updated_at: "",
     instructions: emptyText(),
+    arrival_guide: emptyArrivalGuide(),
     shelly: { server: "", auth_key: "" },
     doors: [],
   };
+}
+
+function emptyArrivalGuide() {
+  const value = {};
+  for (const id of GUIDE_STEP_IDS) value[id] = { image: "", note: emptyText() };
+  return value;
 }
 
 function emptyText() {
@@ -96,6 +105,13 @@ function hasText(field) {
   return LANGUAGES.some((code) => field[code]);
 }
 
+function guideImage(raw) {
+  const value = typeof raw === "string" ? raw.trim() : "";
+  if (!value) return "";
+  if (value.length > MAX_GUIDE_IMAGE_CHARS) return "";
+  return /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=\s]+$/i.test(value) ? value : "";
+}
+
 /**
  * Normalizza qualsiasi configurazione (anche nel vecchio formato) nello schema corrente.
  * Accetta sia `shelly.server` / `shelly.auth_key` condivisi, sia i valori per singola porta.
@@ -115,6 +131,14 @@ export function normalizeConfig(raw) {
   config.access_pin = str(raw.access_pin);
   config.translation_updated_at = str(raw.translation_updated_at);
   config.instructions = localizedText(raw.instructions, config.default_language);
+  const rawGuide = raw.arrival_guide && typeof raw.arrival_guide === "object" ? raw.arrival_guide : {};
+  for (const id of GUIDE_STEP_IDS) {
+    const step = rawGuide[id] && typeof rawGuide[id] === "object" ? rawGuide[id] : {};
+    config.arrival_guide[id] = {
+      image: guideImage(step.image),
+      note: localizedText(step.note, config.default_language),
+    };
+  }
 
   const shared = raw.shelly && typeof raw.shelly === "object" ? raw.shelly : {};
   config.shelly.server = str(shared.server ?? raw.server);
@@ -176,6 +200,12 @@ export function validateConfig(config) {
   }
   if (config.access_pin && !/^[0-9]{4,6}$/.test(config.access_pin)) {
     errors.push("Il codice di accesso deve contenere da 4 a 6 cifre.");
+  }
+  for (const id of GUIDE_STEP_IDS) {
+    const step = config.arrival_guide[id];
+    if (step.image && step.image.length > MAX_GUIDE_IMAGE_CHARS) {
+      errors.push(`Guida arrivo: l'immagine ${id} è troppo grande.`);
+    }
   }
   config.doors.forEach((door, index) => {
     const position = `Porta #${index + 1}`;

@@ -4,7 +4,9 @@
 //   /*      -> tastierino pubblico (GET) e comando di apertura (POST)
 
 import { htmlResponse, jsonResponse } from "./_lib/html.js";
-import { loadConfig, saveConfig, normalizeConfig, validateConfig, resolveDoor } from "./_lib/store.js";
+import {
+  loadConfig, saveConfig, normalizeConfig, validateConfig, resolveDoor, GUIDE_STEP_IDS,
+} from "./_lib/store.js";
 import {
   isAuthenticated, createSessionToken, sessionCookie, clearSessionCookie, safeEqual,
   createGuestToken, guestCookie, hasGuestAccess,
@@ -16,6 +18,7 @@ import { renderKeypadPage } from "./_lib/keypad-page.js";
 
 const SETUP_PATH = "/setup";
 const QUICK_PIN_PATH = "/setup/codice";
+const guestAttempts = new Map();
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -168,13 +171,17 @@ function parseTranslation(result) {
 }
 
 function validateTranslation(value, source, language) {
-  if (!value || typeof value.general_instructions !== "string" || !Array.isArray(value.doors)) {
+  if (
+    !value || typeof value.general_instructions !== "string" ||
+    !Array.isArray(value.doors) || !Array.isArray(value.guide_steps)
+  ) {
     throw new Error("formato non valido per la lingua " + language);
   }
-  if (value.doors.length !== source.doors.length) {
+  if (value.doors.length !== source.doors.length || value.guide_steps.length !== source.guide_steps.length) {
     throw new Error("numero di porte non valido per la lingua " + language);
   }
   const byId = new Map(value.doors.map((door) => [String(door.id || ""), door]));
+  const guideById = new Map(value.guide_steps.map((step) => [String(step.id || ""), step]));
   return {
     general_instructions: value.general_instructions.trim(),
     doors: source.doors.map((door) => {
@@ -187,6 +194,13 @@ function validateTranslation(value, source, language) {
         name: translated.name.trim(),
         instructions: translated.instructions.trim(),
       };
+    }),
+    guide_steps: source.guide_steps.map((step) => {
+      const translated = guideById.get(step.id);
+      if (!translated || typeof translated.note !== "string") {
+        throw new Error("passaggio della guida mancante nella lingua " + language);
+      }
+      return { id: step.id, note: translated.note.trim() };
     }),
   };
 }
@@ -204,6 +218,10 @@ async function translateConfig(env, config) {
       name: String(door.name[DEFAULT_LANGUAGE] || "").trim(),
       instructions: String(door.instructions[DEFAULT_LANGUAGE] || "").trim(),
     })),
+    guide_steps: GUIDE_STEP_IDS.map((id) => ({
+      id,
+      note: String(config.arrival_guide[id].note[DEFAULT_LANGUAGE] || "").trim(),
+    })),
   };
 
   for (const language of LANGUAGES.filter((code) => code !== DEFAULT_LANGUAGE)) {
@@ -211,8 +229,8 @@ async function translateConfig(env, config) {
     if (!target) throw new Error("lingua di destinazione non supportata: " + language);
     const prompt = [
       "Translate this Italian guest-access configuration into natural, concise " + target.name + ".",
-      "Return only a JSON object with exactly this shape: {\"general_instructions\":\"...\",\"doors\":[{\"id\":\"...\",\"name\":\"...\",\"instructions\":\"...\"}]}",
-      "Keep every door id unchanged and keep the doors in the same order.",
+      "Return only a JSON object with exactly this shape: {\"general_instructions\":\"...\",\"doors\":[{\"id\":\"...\",\"name\":\"...\",\"instructions\":\"...\"}],\"guide_steps\":[{\"id\":\"...\",\"note\":\"...\"}]}",
+      "Keep every door and guide-step id unchanged and keep both arrays in the same order.",
       "Preserve every numbered step, line break, parenthetical note and assistance sentence.",
       "Keep the brand name Quintessenza Home unchanged.",
       "Translate the button words APRI ORA exactly as " + target.openNow + ".",
@@ -246,8 +264,20 @@ async function translateConfig(env, config) {
                 required: ["id", "name", "instructions"],
               },
             },
+            guide_steps: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  id: { type: "string" },
+                  note: { type: "string" },
+                },
+                required: ["id", "note"],
+              },
+            },
           },
-          required: ["general_instructions", "doors"],
+          required: ["general_instructions", "doors", "guide_steps"],
         },
       },
       temperature: 0.1,
@@ -259,6 +289,9 @@ async function translateConfig(env, config) {
       config.doors[index].name[language] = door.name;
       config.doors[index].instructions[language] = door.instructions;
     });
+    translated.guide_steps.forEach((step) => {
+      config.arrival_guide[step.id].note[language] = step.note;
+    });
   }
 
   applyCuratedTranslations(config.instructions);
@@ -266,6 +299,7 @@ async function translateConfig(env, config) {
     applyCuratedTranslations(door.name);
     applyCuratedTranslations(door.instructions);
   }
+  for (const id of GUIDE_STEP_IDS) applyCuratedTranslations(config.arrival_guide[id].note);
 
   config.translation_updated_at = new Date().toISOString();
   return config;
@@ -297,6 +331,10 @@ async function handleSetupAction({ request, env }) {
 
   if (body.action === "save") {
     const config = normalizeConfig(body.config);
+    // Il PIN si cambia solo dalla procedura guidata /setup/codice, che richiede
+    // la conferma dell'aggiornamento della cassetta meccanica.
+    const { config: currentConfig } = await loadConfig(env);
+    config.access_pin = currentConfig.access_pin;
     const errors = validateConfig(config);
     if (errors.length) {
       return jsonResponse({ ok: false, msg: errors[0], errors });
@@ -345,6 +383,13 @@ function publicContent(config) {
     mode: config.mode,
     emergency_contact: config.emergency_contact,
     instructions: config.instructions,
+    arrival_guide: GUIDE_STEP_IDS.map((id) => ({
+      id,
+      image: config.arrival_guide[id].image,
+      note: config.arrival_guide[id].note,
+    })).filter((step) => !!step.image),
+    // Viene inviato solo dopo l'autenticazione: è lo stesso PIN della cassetta.
+    key_box_pin: config.access_pin,
     doors: config.doors.map((door) => ({
       id: door.id,
       name: door.name,
@@ -403,6 +448,30 @@ async function handlePublic({ request, env, url }) {
   );
 }
 
+function guestAttemptKey(request) {
+  return request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || "unknown";
+}
+
+function blockedSeconds(key) {
+  const current = guestAttempts.get(key);
+  if (!current || !current.blockedUntil) return 0;
+  const seconds = Math.ceil((current.blockedUntil - Date.now()) / 1000);
+  if (seconds > 0) return seconds;
+  guestAttempts.delete(key);
+  return 0;
+}
+
+function recordWrongPin(key) {
+  const now = Date.now();
+  const current = guestAttempts.get(key);
+  const attempts = !current || now - current.firstAt > 10 * 60 * 1000 ? 1 : current.attempts + 1;
+  guestAttempts.set(key, {
+    attempts: attempts >= 5 ? 0 : attempts,
+    firstAt: attempts >= 5 ? now : (current && current.firstAt) || now,
+    blockedUntil: attempts >= 5 ? now + 60 * 1000 : 0,
+  });
+}
+
 async function handleGuestRequest({ request, url, config }) {
   let body;
   try {
@@ -416,10 +485,17 @@ async function handleGuestRequest({ request, url, config }) {
     if (!config.access_pin) {
       return jsonResponse({ success: true, content: publicContent(config) });
     }
+    const attemptKey = guestAttemptKey(request);
+    const wait = blockedSeconds(attemptKey);
+    if (wait) {
+      return jsonResponse({ success: false, msg: t(lang, "locked_retry", { seconds: wait }) }, { status: 429 });
+    }
     if (!safeEqual(String(body.pin || ""), config.access_pin)) {
+      recordWrongPin(attemptKey);
       await slowDown();
       return jsonResponse({ success: false, msg: t(lang, "locked_error") });
     }
+    guestAttempts.delete(attemptKey);
     return jsonResponse(
       { success: true, content: publicContent(config) },
       { headers: { "Set-Cookie": guestCookie(url, await createGuestToken(config.access_pin)) } }

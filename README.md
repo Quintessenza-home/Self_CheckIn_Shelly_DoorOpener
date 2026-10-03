@@ -7,8 +7,9 @@ Non è richiesta alcuna competenza di programmazione: ti basterà seguire le ist
 > 💡 **La configurazione è persistente.** Porte, PIN e credenziali vengono salvati direttamente dalla pagina `/setup` e restano memorizzati: non devi più reinserirli ogni volta, né copiare-incollare codice, né rifare il deploy.
 
 **In breve, il sistema offre:**
-- 🌍 sito per gli ospiti in **italiano e inglese**, con selettore di lingua;
-- 🔒 **codice di accesso** opzionale, richiesto prima ancora di mostrare quali porte esistono;
+- 🌍 sito per gli ospiti in **sei lingue**, con rilevamento della lingua del telefono;
+- 🔒 **PIN ospiti** da 4 a 6 cifre, inseribile anche da un grande tastierino a schermo;
+- 📷 **guida fotografica all'arrivo** con parcheggio, cancellini e cassetta delle chiavi;
 - 📝 **istruzioni** personalizzabili, generali e per singolo ingresso;
 - 🚪 più porte sullo **stesso dispositivo Shelly**, per l'installazione con un solo pulsante che apre più cancelli.
 
@@ -177,25 +178,30 @@ Nella sezione **Backup e opzioni avanzate** trovi la configurazione in formato t
 
 ## 8. Lingue, codice di accesso e istruzioni
 
-### 🌍 Italiano e inglese
-Il sito per gli ospiti è bilingue. Pulsanti, messaggi ed errori sono già tradotti; i testi che scrivi tu (nomi delle porte e istruzioni) hanno un campo per ogni lingua attivata, contrassegnato da `IT` e `EN`.
+### 🌍 Sei lingue
+Il sito per gli ospiti supporta italiano, inglese, tedesco, francese, spagnolo e olandese. Scrivi i contenuti in italiano: le altre versioni vengono generate automaticamente al salvataggio.
 
-- La pagina parte **nella lingua del telefono dell'ospite**; in alto c'è un selettore `IT / EN` e la scelta viene ricordata.
-- Se un testo in inglese è vuoto, viene mostrato quello italiano: non resta mai uno spazio bianco.
-- Puoi disattivare una lingua togliendo la spunta in *Lingue del sito*: il selettore sparisce e i campi corrispondenti non ti vengono più chiesti.
+- La pagina parte **nella lingua del telefono dell'ospite**; se non è supportata usa l'inglese.
+- Il selettore con bandiere permette di cambiare lingua e ricorda la scelta.
+- Se una traduzione è vuota, viene mostrato il testo italiano.
 - Il **pannello `/setup` è in italiano**: la traduzione riguarda la pagina vista dagli ospiti.
 
-> 💡 Vuoi vedere il sito in una lingua precisa? Aggiungi `?lang=en` o `?lang=it` al link.
+> 💡 Vuoi vedere il sito in una lingua precisa? Aggiungi, per esempio, `?lang=en` o `?lang=it` al link.
 
 ### 🔒 Codice di accesso (il PIN "a monte")
-Nella sezione *Codice di Accesso* puoi impostare un PIN richiesto **prima ancora di mostrare quali porte esistono**. Finché non viene inserito, l'elenco degli ingressi non viene nemmeno inviato al browser, e nessun comando di apertura viene accettato.
+La pagina `/setup/codice` permette di generare o inserire il PIN richiesto **prima ancora di mostrare quali porte esistono**. Lo stesso PIN viene mostrato, dopo l'autenticazione, come codice della cassetta delle chiavi.
 
-- Da 4 a 12 cifre, **consigliate almeno 6**.
-- Superato il codice, l'ospite resta autenticato per **12 ore**; cambiando il codice tutte le sessioni decadono subito.
-- Resta indipendente dal **PIN della singola porta**: puoi usare un codice per entrare nel sito e un PIN diverso, per esempio, sul solo garage.
-- Lascia il campo vuoto per lasciare il sito libero (comportamento precedente).
+- Da 4 a 6 cifre; il generatore rapido produce un PIN di 4 cifre.
+- Superato il codice, l'ospite resta autenticato per **24 ore**; cambiandolo tutte le sessioni decadono subito.
+- Prima del cambio l'host deve confermare di aver impostato lo stesso codice sulla cassetta meccanica.
+- Dopo cinque tentativi errati viene applicata un'attesa temporanea.
 
-> ⚠️ **Onestà sul livello di sicurezza:** è un deterrente paragonabile al codice di una cassetta portachiavi, non una password robusta. I tentativi errati vengono rallentati, ma chi ha il link può provare a indovinare: usa 6 cifre o più e cambia il codice fra un ospite e l'altro.
+> ⚠️ **Onestà sul livello di sicurezza:** è un deterrente paragonabile al codice di una cassetta portachiavi, non una password robusta. I tentativi errati vengono rallentati, ma il PIN va comunque cambiato fra un ospite e l'altro.
+
+### 📷 Guida fotografica all'arrivo
+Nella sezione *Guida fotografica all'arrivo* di `/setup` ci sono quattro slot fissi: parcheggio, cancellino esterno, cancellino interno e cassetta delle chiavi. Le foto vengono ridimensionate nel browser e salvate nel KV insieme alla configurazione, quindi sostituirle non richiede un deploy. Dopo il PIN l'ospite vede una sola fotografia per volta, con pulsanti grandi *Avanti* e *Indietro*; alla fine raggiunge i comandi di apertura.
+
+La pagina `/setup/codice` genera anche un messaggio ospite nelle sei lingue, pronto da copiare o condividere. Il messaggio contiene un solo link e un solo PIN: fotografie e istruzioni rimangono nella guida protetta.
 
 ### 📝 Istruzioni
 Ci sono due livelli, entrambi opzionali:
@@ -232,15 +238,15 @@ Il dispositivo è sempre lo stesso: quello che cambia è **da quale citofono hai
    - Istruzioni: *"Una volta dentro, suona dal pulsante del portone e premi di nuovo Apri ora."*
 5. Usa **↑ ↓** per verificare che l'ordine rispecchi il percorso reale, poi **Salva configurazione**.
 
-L'ospite vedrà una schermata alla volta, con scritto esattamente cosa fare prima di premere. Ripetere lo stesso Device ID è del tutto legittimo: la validazione non lo segnala come errore.
+L'ospite vedrà una schermata alla volta, con scritto esattamente cosa fare prima di premere. Ripetere lo stesso Device ID è del tuto legittimo: la validazione non lo segnala come errore.
 
 ---
 
-## 10. Utilizzo Quotidiano
+## 10. Utilizzo Quotidianno
 
 Il tuo sistema è pronto!
 
-- **Per gli utenti / ospiti:** basta collegarsi all'indirizzo base del sito (es. `https://opendoor-8id.pages.dev/`). Se hai impostato un codice di accesso verrà chiesto per primo; poi apparirà il tastierino con le istruzioni, i pulsanti di apertura e l'eventuale PIN della singola porta.
+- **Per gli utenti / ospiti:** basta aprire il link, inserire il PIN dal tastierino a schermo, seguire la guida fotografica e usare i pulsanti verdi di apertura.
 - **Per modificare la configurazione:** torna su `/setup`, cambia ciò che ti serve e premi **Salva configurazione**. Le modifiche sono immediate.
 
 ---
