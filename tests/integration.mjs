@@ -29,6 +29,7 @@ function baseConfig() {
     emergency_contact: "+390000000000",
     instructions: { it: "Segui le indicazioni." },
     arrival_guide: {
+      vehicle_gate: { image: "data:image/jpeg;base64,AP==", note: { it: "Ingresso per le auto." } },
       parking: { image: "data:image/jpeg;base64,AA==", note: { it: "Posto sulla destra." } },
       outer_gate: { image: "data:image/jpeg;base64,AQ==", note: { it: "Accanto al cancello." } },
       inner_gate: { image: "data:image/jpeg;base64,Ag==", note: { it: "In fondo al vialetto." } },
@@ -78,11 +79,13 @@ test("the locked page never embeds guide photos or the shared PIN", async () => 
   const html = await response.text();
   assert.equal(response.status, 200);
   assert.match(html, /function accessPinEntry/);
+  assert.match(html, /Visualizza la guida/);
+  assert.match(html, /Vai ai comandi di apertura/);
   assert.doesNotMatch(html, /data:image\/jpeg;base64,AA==/);
   assert.doesNotMatch(html, /key_box_pin\":\"1234/);
 });
 
-test("unlock returns the four guide steps and the same PIN for the lockbox", async () => {
+test("unlock returns the five guide steps in order and the same PIN for the lockbox", async () => {
   const env = await environment();
   const response = await onRequest(context(env, "https://example.test/", {
     method: "POST",
@@ -91,7 +94,8 @@ test("unlock returns the four guide steps and the same PIN for the lockbox", asy
   }));
   const body = await response.json();
   assert.equal(body.success, true);
-  assert.equal(body.content.arrival_guide.length, 4);
+  assert.equal(body.content.arrival_guide.length, 5);
+  assert.equal(body.content.arrival_guide[0].id, "vehicle_gate");
   assert.equal(body.content.key_box_pin, "1234");
   assert.match(response.headers.get("Set-Cookie"), /^sc_guest=/);
 });
