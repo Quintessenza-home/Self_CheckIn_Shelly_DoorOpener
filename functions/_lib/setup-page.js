@@ -6,7 +6,23 @@
 // campi localizzati compilabili in ogni lingua attivata.
 
 import { BASE_STYLES, escapeHtml, jsonForScript } from "./html.js";
-import { LANGUAGES, LANGUAGE_LABELS } from "./i18n.js";
+import { LANGUAGES, LANGUAGE_LABELS, LANGUAGE_FLAGS } from "./i18n.js";
+
+const GUIDE_META = [
+  { id: "parking", icon: "🅿️", title: "Dove parcheggiare", placeholder: "Es. Parcheggia nello spazio sulla destra, davanti alla siepe." },
+  { id: "outer_gate", icon: "🚶", title: "Cancellino esterno", placeholder: "Es. Il cancellino si trova accanto al cancello carrabile." },
+  { id: "inner_gate", icon: "🏡", title: "Cancellino interno", placeholder: "Es. Dopo il vialetto trovi il secondo cancellino sulla sinistra." },
+  { id: "key_box", icon: "🔑", title: "Cassetta delle chiavi", placeholder: "Es. Solleva lo sportellino, inserisci il PIN e abbassa la levetta." },
+];
+
+const GUEST_MESSAGE_TEMPLATES = {
+  it: "Benvenuto a Quintessenza Home.\nApri la guida per l’arrivo, il parcheggio e gli ingressi:\n{url}\nPIN di accesso: {pin}\nLo stesso PIN apre anche la cassetta delle chiavi.",
+  en: "Welcome to Quintessenza Home.\nOpen the arrival, parking and entrance guide:\n{url}\nAccess PIN: {pin}\nThe same PIN also opens the key lockbox.",
+  de: "Willkommen bei Quintessenza Home.\nÖffnen Sie die Anleitung für Anreise, Parkplatz und Zugänge:\n{url}\nZugangs-PIN: {pin}\nDieselbe PIN öffnet auch den Schlüsselkasten.",
+  fr: "Bienvenue à Quintessenza Home.\nOuvrez le guide d’arrivée, de stationnement et d’accès :\n{url}\nCode PIN d’accès : {pin}\nLe même code ouvre également la boîte à clés.",
+  es: "Bienvenido a Quintessenza Home.\nAbre la guía de llegada, aparcamiento y accesos:\n{url}\nPIN de acceso: {pin}\nEl mismo PIN también abre la caja de llaves.",
+  nl: "Welkom bij Quintessenza Home.\nOpen de gids voor aankomst, parkeren en toegang:\n{url}\nToegangspincode: {pin}\nDezelfde pincode opent ook het sleutelkastje.",
+};
 
 const SETUP_STYLES = `
   body { padding: 2rem 1rem 6rem; }
@@ -104,10 +120,32 @@ const SETUP_STYLES = `
   .quick-pin-card strong { display: block; font-size: 1.05rem; margin-bottom: 0.2rem; }
   .quick-pin-card span { display: block; font-size: 0.9rem; line-height: 1.4; }
   .quick-pin-card .quick-arrow { font-size: 1.5rem; font-weight: 900; }
+  .guide-admin-grid { display: grid; gap: 1rem; }
+  .guide-admin-card {
+    background: #fff; border: 2px solid var(--border); border-radius: 12px;
+    padding: 1rem;
+  }
+  .guide-admin-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.8rem; }
+  .guide-admin-head .icon { font-size: 1.4rem; }
+  .guide-admin-head strong { font-size: 1rem; }
+  .guide-preview {
+    width: 100%; max-height: 260px; object-fit: cover; display: block;
+    border-radius: 10px; border: 2px solid var(--border); margin-bottom: 0.75rem;
+  }
+  .guide-empty {
+    min-height: 110px; display: grid; place-items: center; text-align: center;
+    border: 2px dashed var(--border); border-radius: 10px; color: var(--text-subtle);
+    margin-bottom: 0.75rem; padding: 1rem; font-size: 0.9rem;
+  }
+  .guide-actions { display: flex; gap: 0.6rem; margin-bottom: 0.9rem; }
+  .guide-actions button { flex: 1; padding: 0.6rem; font-size: 0.86rem; }
+  .guide-actions .remove-image { color: var(--danger); background: #fff; border-color: #fecaca; }
+  .image-processing { color: var(--brand-green); font-size: 0.82rem; font-weight: 700; min-height: 1.1rem; }
 
   @media (max-width: 480px) {
     .card { padding: 1.25rem; }
     .row { flex-direction: column; gap: 0; }
+    .guide-actions { flex-direction: column; }
   }
 `;
 
@@ -214,8 +252,18 @@ export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl
     .activate:disabled, .copy:disabled { opacity: 0.45; cursor: not-allowed; }
     .hint { margin: 0.55rem 0 0; color: var(--text-subtle); font-size: 0.95rem; line-height: 1.45; }
     .warning { margin-top: 1.15rem; padding: 0.85rem; border-radius: 10px; background: #fff7ed; border: 2px solid #c2410c; color: #7c2d12; font-size: 0.92rem; line-height: 1.45; }
+    .sync-check {
+      display: flex; align-items: flex-start; gap: 0.7rem; margin-top: 1rem; padding: 0.85rem;
+      border-radius: 10px; background: #f0fdf4; border: 2px solid #86b89a;
+      color: #183d2d; font-size: 0.95rem; line-height: 1.45; text-transform: none;
+      letter-spacing: 0; cursor: pointer;
+    }
+    .sync-check input { width: 24px; height: 24px; flex: 0 0 24px; margin: 0.05rem 0 0; accent-color: var(--brand-green); }
+    .sync-check[hidden] { display: none !important; }
     .status { min-height: 28px; margin: 1rem 0 0; font-weight: 800; text-align: center; }
-    .share { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.75rem; }
+    .message-language { margin-top: 1rem; }
+    .message-language label { font-size: 0.85rem; }
+    .share { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.75rem; }
     .copy { background: #f5f2eb; color: var(--text); }
     @media (max-width: 430px) {
       body { padding: 0; align-items: stretch; background: #fff; }
@@ -245,12 +293,24 @@ export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl
         <button type="button" class="activate" id="activatePin">Attiva nuovo PIN</button>
       </div>
 
-      <div class="warning">Quando attivi un nuovo PIN, le sessioni ospite già aperte vengono invalidate e dovranno inserire il nuovo codice.</div>
+      <label class="sync-check" id="syncWrap">
+        <input type="checkbox" id="keyBoxSynced">
+        <span><strong>Ho impostato lo stesso PIN sulla cassetta delle chiavi.</strong><br>Questa conferma evita di inviare agli ospiti un codice non sincronizzato.</span>
+      </label>
+
+      <div class="warning">Quando attivi un nuovo PIN, le sessioni ospite già aperte vengono invalidate. Il codice della cassetta meccanica deve essere cambiato manualmente.</div>
       <div class="status" id="pinStatus" role="status" aria-live="polite"></div>
 
+      <div class="message-language">
+        <label for="messageLanguage">Lingua del messaggio</label>
+        <select id="messageLanguage">
+          ${LANGUAGES.map((code) => `<option value="${code}">${LANGUAGE_FLAGS[code]} ${escapeHtml(LANGUAGE_LABELS[code])}</option>`).join("")}
+        </select>
+      </div>
       <div class="share">
         <button type="button" class="copy" id="copyPin">Copia PIN</button>
         <button type="button" class="copy" id="copyMessage">Copia messaggio ospite</button>
+        <button type="button" class="copy" id="shareMessage">Condividi</button>
       </div>
     </section>
   </main>
@@ -259,11 +319,16 @@ export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl
     var endpoint = ${jsonForScript(actionPath)};
     var publicUrl = ${jsonForScript(publicUrl.replace(/\/$/, "") + "/")};
     var currentPin = ${jsonForScript(accessPin || "")};
+    var messageTemplates = ${jsonForScript(GUEST_MESSAGE_TEMPLATES)};
     var input = document.getElementById('guestPin');
     var statusNode = document.getElementById('pinStatus');
     var activateButton = document.getElementById('activatePin');
     var copyPinButton = document.getElementById('copyPin');
     var copyMessageButton = document.getElementById('copyMessage');
+    var shareMessageButton = document.getElementById('shareMessage');
+    var syncBox = document.getElementById('keyBoxSynced');
+    var syncWrap = document.getElementById('syncWrap');
+    var messageLanguage = document.getElementById('messageLanguage');
 
     function isValid(value) { return /^[0-9]{4,6}$/.test(value); }
     function setStatus(message, ok) {
@@ -273,9 +338,16 @@ export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl
     function updateButtons() {
       var valid = isValid(input.value);
       var active = valid && input.value === currentPin;
-      activateButton.disabled = !valid || active;
+      var changed = valid && input.value !== currentPin;
+      syncWrap.hidden = !changed;
+      activateButton.disabled = !changed || !syncBox.checked;
       copyPinButton.disabled = !active;
       copyMessageButton.disabled = !active;
+      shareMessageButton.disabled = !active || !navigator.share;
+    }
+    function guestMessage() {
+      var template = messageTemplates[messageLanguage.value] || messageTemplates.it;
+      return template.split('{url}').join(publicUrl).split('{pin}').join(currentPin);
     }
     function copyText(value, successMessage) {
       function done() { setStatus(successMessage, true); }
@@ -291,8 +363,10 @@ export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl
 
     input.addEventListener('input', function () {
       input.value = input.value.replace(/[^0-9]/g, '').slice(0, 6);
+      syncBox.checked = false;
       setStatus('', false); updateButtons();
     });
+    syncBox.addEventListener('change', updateButtons);
     document.getElementById('showPin').addEventListener('click', function (event) {
       var hidden = input.type === 'password';
       input.type = hidden ? 'text' : 'password';
@@ -301,6 +375,7 @@ export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl
     document.getElementById('generatePin').addEventListener('click', function () {
       var value = new Uint32Array(1); crypto.getRandomValues(value);
       input.value = String(1000 + (value[0] % 9000));
+      syncBox.checked = false;
       input.type = 'text'; document.getElementById('showPin').textContent = 'Nascondi';
       setStatus('Nuovo PIN generato. Premi “Attiva nuovo PIN” per salvarlo.', true); updateButtons();
     });
@@ -314,7 +389,7 @@ export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl
         body: JSON.stringify({ action: 'save-access-pin', access_pin: pin })
       }).then(function (response) { return response.json(); }).then(function (result) {
         if (!result.ok) throw new Error(result.msg || 'Salvataggio non riuscito.');
-        currentPin = pin; setStatus(result.msg, true); updateButtons();
+        currentPin = pin; syncBox.checked = false; setStatus(result.msg, true); updateButtons();
       }).catch(function (error) { setStatus(error.message, false); updateButtons(); });
     });
     copyPinButton.addEventListener('click', function () {
@@ -322,9 +397,17 @@ export function renderGuestPinPage({ accessPin, actionPath, setupPath, publicUrl
     });
     copyMessageButton.addEventListener('click', function () {
       if (!isValid(currentPin)) return;
-      var message = 'Benvenuto a Quintessenza Home.\\nApri gli ingressi da: ' + publicUrl + '\\nPIN di accesso: ' + currentPin;
-      copyText(message, 'Messaggio per l’ospite copiato ✅');
+      copyText(guestMessage(), 'Messaggio per l’ospite copiato ✅');
     });
+    shareMessageButton.addEventListener('click', function () {
+      if (!isValid(currentPin) || !navigator.share) return;
+      navigator.share({ title: 'Quintessenza Home', text: guestMessage() })
+        .then(function () { setStatus('Messaggio condiviso ✅', true); })
+        .catch(function (error) {
+          if (error && error.name !== 'AbortError') setStatus('Condivisione non riuscita.', false);
+        });
+    });
+    if (!navigator.share) shareMessageButton.style.display = 'none';
     updateButtons();
   </script>
 </body>
@@ -393,22 +476,16 @@ export function renderSetupPage({ config, storage, actionPath }) {
       <div class="section">
         <div class="section-title">Codice di Accesso</div>
         <p class="section-intro">
-          Se lo imposti, all'apertura del sito viene chiesto <strong>prima di mostrare le porte</strong>:
-          chi non ha il codice non vede nemmeno quali ingressi esistono. Comunicalo all'ospite
-          insieme al link. Lascia vuoto per lasciare il sito libero.
+          Un unico PIN protegge la pagina degli ospiti e apre la cassetta delle chiavi.
+          Per cambiarlo usa la procedura guidata, che ti ricorda di aggiornare anche la cassetta meccanica.
         </p>
-        <div class="field">
-          <label for="accessPin">Codice richiesto all'ingresso (Opzionale)</label>
-          <div class="with-toggle">
-            <input type="password" id="accessPin" placeholder="Es. 481902" autocomplete="off"
-                   inputmode="numeric" minlength="4" maxlength="6" pattern="[0-9]{4,6}">
-            <button type="button" class="peek" data-peek="accessPin">Mostra</button>
-          </div>
-          <p class="hint">
-            Da 4 a 6 cifre. Puoi usare il generatore rapido oppure inserirlo manualmente.
-            La sessione dell'ospite dura 24 ore.
-          </p>
-        </div>
+        <a class="quick-pin-card" style="margin:0" href="${escapeHtml(actionPath)}/codice">
+          <span>
+            <strong>🔢 Gestisci il PIN ospiti</strong>
+            <span>Da 4 a 6 cifre. La sessione dell'ospite dura 24 ore.</span>
+          </span>
+          <span class="quick-arrow" aria-hidden="true">›</span>
+        </a>
       </div>
 
       <div class="section">
@@ -418,6 +495,16 @@ export function renderSetupPage({ config, storage, actionPath }) {
           ingressi o come funziona il citofono. Puoi lasciarlo vuoto. Le traduzioni vengono aggiornate al salvataggio.
         </p>
         <div id="generalInstructions"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Guida fotografica all’arrivo</div>
+        <p class="section-intro">
+          Carica una foto per ogni passaggio. Le immagini vengono ridimensionate sul telefono,
+          private dei metadati e salvate insieme alla configurazione: per sostituirle non serve un nuovo deploy.
+          Le note si scrivono in italiano e vengono tradotte automaticamente al salvataggio.
+        </p>
+        <div class="guide-admin-grid" id="arrivalGuide"></div>
       </div>
 
       <div class="section">
@@ -486,6 +573,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
     var endpoint = ${jsonForScript(actionPath)};
     var LANGS = ${jsonForScript(LANGUAGES)};
     var LANG_LABELS = ${jsonForScript(LANGUAGE_LABELS)};
+    var GUIDE_META = ${jsonForScript(GUIDE_META)};
     var dirty = false;
 
     function h(tag, attrs, text) {
@@ -775,6 +863,128 @@ export function renderSetupPage({ config, storage, actionPath }) {
       }));
     }
 
+    function ensureGuide() {
+      if (!state.arrival_guide || typeof state.arrival_guide !== 'object') state.arrival_guide = {};
+      GUIDE_META.forEach(function (meta) {
+        var step = state.arrival_guide[meta.id];
+        if (!step || typeof step !== 'object') step = {};
+        if (!step.note || typeof step.note !== 'object') step.note = emptyText();
+        LANGS.forEach(function (code) {
+          if (typeof step.note[code] !== 'string') step.note[code] = '';
+        });
+        if (typeof step.image !== 'string') step.image = '';
+        state.arrival_guide[meta.id] = step;
+      });
+    }
+
+    function compressedImage(file, onProgress) {
+      return new Promise(function (resolve, reject) {
+        if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+          reject(new Error('Scegli un file JPG, PNG o WebP.'));
+          return;
+        }
+        var objectUrl = URL.createObjectURL(file);
+        var image = new Image();
+        image.onload = function () {
+          try {
+            var longest = Math.max(image.naturalWidth, image.naturalHeight);
+            var scale = Math.min(1, 1400 / longest);
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            var context = canvas.getContext('2d', { alpha: false });
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            var quality = 0.82;
+            var value = canvas.toDataURL('image/jpeg', quality);
+            while (value.length > 800000 && quality > 0.46) {
+              quality -= 0.08;
+              value = canvas.toDataURL('image/jpeg', quality);
+            }
+            if (value.length > 850000) throw new Error('La foto resta troppo grande: scegline una più piccola.');
+            if (onProgress) onProgress('Foto ottimizzata · ' + Math.round(value.length * 0.75 / 1024) + ' KB');
+            resolve(value);
+          } catch (error) {
+            reject(error);
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        };
+        image.onerror = function () {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error('Non riesco a leggere questa immagine.'));
+        };
+        image.src = objectUrl;
+      });
+    }
+
+    function renderArrivalGuide() {
+      ensureGuide();
+      var container = document.getElementById('arrivalGuide');
+      container.innerHTML = '';
+      GUIDE_META.forEach(function (meta) {
+        var step = state.arrival_guide[meta.id];
+        var card = h('div', { class: 'guide-admin-card' });
+        var head = h('div', { class: 'guide-admin-head' });
+        head.appendChild(h('span', { class: 'icon', 'aria-hidden': 'true' }, meta.icon));
+        head.appendChild(h('strong', {}, meta.title));
+        card.appendChild(head);
+
+        if (step.image) {
+          var preview = h('img', { class: 'guide-preview', alt: 'Anteprima · ' + meta.title });
+          preview.src = step.image;
+          card.appendChild(preview);
+        } else {
+          card.appendChild(h('div', { class: 'guide-empty' }, 'Nessuna foto caricata'));
+        }
+
+        var picker = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
+        picker.hidden = true;
+        var progress = h('div', { class: 'image-processing', role: 'status' });
+        var actions = h('div', { class: 'guide-actions' });
+        var choose = h('button', { type: 'button', class: 'btn-test' }, step.image ? 'Sostituisci foto' : 'Carica foto');
+        choose.addEventListener('click', function () { picker.click(); });
+        picker.addEventListener('change', function () {
+          var file = picker.files && picker.files[0];
+          if (!file) return;
+          choose.disabled = true;
+          progress.textContent = 'Ottimizzazione della foto…';
+          compressedImage(file, function (message) { progress.textContent = message; })
+            .then(function (value) {
+              step.image = value;
+              markDirty();
+              renderArrivalGuide();
+            })
+            .catch(function (error) { progress.textContent = error.message; })
+            .then(function () { choose.disabled = false; picker.value = ''; });
+        });
+        actions.appendChild(choose);
+        if (step.image) {
+          var remove = h('button', { type: 'button', class: 'remove-image' }, 'Rimuovi foto');
+          remove.addEventListener('click', function () {
+            if (!window.confirm('Rimuovere la foto di “' + meta.title + '”?')) return;
+            step.image = '';
+            markDirty();
+            renderArrivalGuide();
+          });
+          actions.appendChild(remove);
+        }
+        card.appendChild(picker);
+        card.appendChild(actions);
+        card.appendChild(progress);
+        card.appendChild(localizedField('Nota in italiano (opzionale)', step.note, {
+          multiline: true,
+          rows: 2,
+          placeholders: { it: meta.placeholder },
+          hint: meta.id === 'key_box'
+            ? 'Il sito aggiunge automaticamente il PIN della cassetta e specifica che è lo stesso usato per accedere.'
+            : 'Aggiungi solo dettagli utili che non risultano evidenti dalla foto.'
+        }));
+        container.appendChild(card);
+      });
+    }
+
     function renderTranslationStatus() {
       var node = document.getElementById('translationStatus');
       if (!node) return;
@@ -818,7 +1028,6 @@ export function renderSetupPage({ config, storage, actionPath }) {
     function syncGeneralFields() {
       document.getElementById('mode').value = state.mode;
       document.getElementById('emergency').value = state.emergency_contact || '';
-      document.getElementById('accessPin').value = state.access_pin || '';
       document.getElementById('sharedServer').value = state.shelly.server || '';
       document.getElementById('sharedKey').value = state.shelly.auth_key || '';
     }
@@ -827,6 +1036,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
       syncGeneralFields();
       renderTranslationStatus();
       renderGeneralInstructions();
+      renderArrivalGuide();
       renderDoors();
     }
 
@@ -837,10 +1047,6 @@ export function renderSetupPage({ config, storage, actionPath }) {
       });
       document.getElementById('emergency').addEventListener('input', function (event) {
         state.emergency_contact = event.target.value;
-        markDirty();
-      });
-      document.getElementById('accessPin').addEventListener('input', function (event) {
-        state.access_pin = event.target.value;
         markDirty();
       });
       document.getElementById('sharedServer').addEventListener('input', function (event) {
@@ -903,6 +1109,7 @@ export function renderSetupPage({ config, storage, actionPath }) {
             access_pin: parsed.access_pin || '',
             translation_updated_at: parsed.translation_updated_at || '',
             instructions: importText(parsed.instructions, defaultLanguage),
+            arrival_guide: {},
             shelly: {
               server: (parsed.shelly && parsed.shelly.server) || parsed.server || '',
               auth_key: (parsed.shelly && parsed.shelly.auth_key) || parsed.auth_key || ''
@@ -919,6 +1126,16 @@ export function renderSetupPage({ config, storage, actionPath }) {
               };
             })
           };
+          var importedGuide = parsed.arrival_guide && typeof parsed.arrival_guide === 'object'
+            ? parsed.arrival_guide : {};
+          GUIDE_META.forEach(function (meta) {
+            var step = importedGuide[meta.id] && typeof importedGuide[meta.id] === 'object'
+              ? importedGuide[meta.id] : {};
+            state.arrival_guide[meta.id] = {
+              image: typeof step.image === 'string' ? step.image : '',
+              note: importText(step.note, defaultLanguage)
+            };
+          });
           renderAll();
           markDirty();
           message.textContent = 'Configurazione importata: controllala e premi "Salva configurazione".';

@@ -75,6 +75,43 @@ const KEYPAD_STYLES = `
     padding: 0.9rem; border: 2px solid #2d2b27; border-radius: 12px;
     margin-bottom: 1rem; background: #fbfaf7;
   }
+  .access-pin-entry { margin-bottom: 1rem; }
+  .access-pin-entry input { margin-bottom: 0.65rem; }
+  .keypad {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem; margin-bottom: 0.65rem;
+  }
+  .keypad button {
+    min-height: 58px; padding: 0.45rem; border-radius: 12px;
+    border: 2px solid #cbc5ba; background: #fff; color: #262521;
+    font-size: 1.35rem; font-weight: 800; touch-action: manipulation;
+  }
+  .keypad button:active { background: #e9f2ec; border-color: #2f6b4f; }
+  .keypad button.control { font-size: 0.9rem; color: #57544e; }
+  .keypad-mode {
+    width: 100%; min-height: 44px; padding: 0.45rem; margin: 0;
+    border: 0; background: transparent; color: #2f6b4f; font-size: 0.9rem;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .guide-progress { margin: -0.7rem 0 0.75rem; color: #6b665e; font-size: 0.88rem; font-weight: 800; }
+  .guide-card {
+    text-align: left; background: #f8f5ee; border: 2px solid #ded7ca;
+    border-radius: 16px; padding: 0.75rem; margin-bottom: 0.9rem;
+  }
+  .guide-card img {
+    display: block; width: 100%; max-height: 42vh; object-fit: contain;
+    background: #ebe7df; border-radius: 11px; margin-bottom: 0.85rem;
+  }
+  .guide-card h2 { margin: 0 0 0.45rem; font-size: 1.25rem; line-height: 1.3; }
+  .guide-card p { margin: 0; color: #36332f; font-size: 1rem; line-height: 1.55; white-space: pre-wrap; }
+  .key-box-code {
+    margin-top: 0.85rem; padding: 0.8rem; border-radius: 10px; text-align: center;
+    background: #fff; border: 2px solid #2f6b4f;
+  }
+  .key-box-code span { display: block; color: #57544e; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+  .key-box-code strong { display: block; margin-top: 0.25rem; font-size: 1.7rem; letter-spacing: 0.22rem; color: #183d2d; }
+  .guide-nav { display: grid; grid-template-columns: 1fr 1.35fr; gap: 0.65rem; }
+  .guide-nav .action { margin-bottom: 0; }
   button.action {
     width: 100%; min-height: 62px; padding: 0.95rem 1rem;
     font-size: 1.1rem; line-height: 1.25; font-weight: 800; color: #fff;
@@ -104,6 +141,10 @@ const KEYPAD_STYLES = `
     background: #f4f2ed; color: #3f3d38; border-color: #cbc5ba; box-shadow: none;
   }
   button.action.btn-back:hover { background: #ebe8e1; }
+  button.action.btn-guide {
+    min-height: 48px; padding: 0.65rem; background: transparent; color: #2f6b4f;
+    border-color: #9bb8a6; box-shadow: none; font-size: 0.95rem;
+  }
   .hint {
     font-size: 1.05rem; color: #57544e; line-height: 1.65; margin: 0 0 1.2rem;
   }
@@ -135,9 +176,16 @@ const KEYPAD_STYLES = `
     .logo { max-width: 155px; margin-bottom: 1.1rem; }
     h1 { font-size: 1.55rem; margin-bottom: 1.35rem; }
     .instructions { padding: 1rem; margin-bottom: 1.15rem; }
+    .guide-card img { max-height: 38vh; }
     button.action { min-height: 64px; }
+    .box.showing-guide { padding-top: 4.25rem; }
+    .box.showing-guide .logo { max-width: 105px; margin-bottom: 0.35rem; }
+    .box.showing-guide .badge { display: none; }
+    .box.showing-guide h1 { font-size: 1.45rem; margin: 0.2rem 0 0.65rem; }
+    .box.showing-guide .hint { font-size: 0.95rem; line-height: 1.4; margin-bottom: 0.55rem; }
+    .box.showing-guide .guide-card img { max-height: 31vh; }
     .emergency {
-      top: 0.75rem; left: 0.75rem; bottom: auto; transform: none;
+      position: absolute; top: 0.75rem; left: 0.75rem; bottom: auto; transform: none;
       width: auto; max-width: calc(100% - 8.25rem);
     }
     .emergency a {
@@ -172,15 +220,30 @@ const KEYPAD_STYLES = `
       gap: 0.55rem;
     }
     #actionArea.locked .hint { grid-column: 1 / -1; margin-bottom: 0; }
+    #actionArea.locked .access-pin-entry { grid-column: 1 / -1; margin-bottom: 0; }
     #actionArea.locked input,
     #actionArea.locked button.action { min-height: 54px; margin-bottom: 0; }
+    .keypad { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.4rem; }
+    .keypad button { min-height: 48px; font-size: 1.05rem; }
+    .guide-card { display: grid; grid-template-columns: minmax(170px, 0.9fr) 1.1fr; gap: 0.8rem; align-items: center; }
+    .guide-card img { max-height: 44vh; margin: 0; }
+    .guide-card .guide-copy { min-width: 0; }
+    .box.showing-guide { padding-top: 2.65rem; }
+    .box.showing-guide .logo { display: none; }
+    .box.showing-guide .badge { display: none; }
+    .box.showing-guide h1 { margin: 0 0 0.2rem; font-size: 1.25rem; }
+    .box.showing-guide .hint { margin-bottom: 0.2rem; }
+    .box.showing-guide .guide-progress { margin: -0.15rem 0 0.35rem; }
+    .box.showing-guide .guide-card { padding: 0.5rem; margin-bottom: 0.45rem; }
+    .box.showing-guide .guide-card img { max-height: 30vh; }
+    .box.showing-guide .guide-nav .action { min-height: 48px; padding-block: 0.5rem; }
     #statusMessage { margin-top: 0.45rem; min-height: 22px; font-size: 0.9rem; }
     .lang-switch { top: 0.65rem; right: 0.75rem; }
     .lang-menu {
       max-height: calc(100dvh - 4.5rem); overflow-y: auto;
       overscroll-behavior: contain;
     }
-    .emergency { top: 0.65rem; left: 0.75rem; bottom: auto; transform: none; }
+    .emergency { position: absolute; top: 0.65rem; left: 0.75rem; bottom: auto; transform: none; }
     .emergency a { min-height: 44px; font-size: 0.9rem; }
   }
 
@@ -219,6 +282,13 @@ export function renderKeypadPage({ data }) {
     var content = data.content;
     var selected = null;
     var currentStep = 0;
+    var guideIndex = 0;
+    var guideOpen = false;
+
+    if (unlocked && content && content.arrival_guide && content.arrival_guide.length) {
+      try { guideOpen = window.sessionStorage.getItem('sc_arrival_guide_seen') !== '1'; }
+      catch (error) { guideOpen = true; }
+    }
 
     try {
       var saved = window.localStorage.getItem('sc_lang');
@@ -280,6 +350,64 @@ export function renderKeypadPage({ data }) {
       return node;
     }
 
+    function accessPinEntry(placeholder) {
+      var wrap = h('div', 'access-pin-entry');
+      var input = pinField(placeholder);
+      input.maxLength = 6;
+      input.readOnly = true;
+      input.setAttribute('aria-label', T('locked_title'));
+      input.addEventListener('input', function () {
+        input.value = input.value.replace(/[^0-9]/g, '').slice(0, 6);
+      });
+      wrap.appendChild(input);
+
+      var keypad = h('div', 'keypad');
+      keypad.setAttribute('aria-label', T('keypad_screen'));
+      function addDigit(value) {
+        if (input.value.length >= 6) return;
+        input.value += value;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      ['1','2','3','4','5','6','7','8','9'].forEach(function (digit) {
+        var button = h('button', null, digit);
+        button.type = 'button';
+        button.setAttribute('aria-label', digit);
+        button.addEventListener('click', function () { addDigit(digit); });
+        keypad.appendChild(button);
+      });
+      var clear = h('button', 'control', 'C');
+      clear.type = 'button'; clear.setAttribute('aria-label', T('keypad_clear'));
+      clear.addEventListener('click', function () { input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); });
+      keypad.appendChild(clear);
+      var zero = h('button', null, '0');
+      zero.type = 'button'; zero.setAttribute('aria-label', '0');
+      zero.addEventListener('click', function () { addDigit('0'); });
+      keypad.appendChild(zero);
+      var backspace = h('button', 'control', '⌫');
+      backspace.type = 'button'; backspace.setAttribute('aria-label', T('keypad_delete'));
+      backspace.addEventListener('click', function () {
+        input.value = input.value.slice(0, -1);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      keypad.appendChild(backspace);
+      wrap.appendChild(keypad);
+
+      var mode = h('button', 'keypad-mode', T('keypad_phone'));
+      mode.type = 'button';
+      mode.addEventListener('click', function () {
+        input.readOnly = !input.readOnly;
+        if (input.readOnly) {
+          input.blur();
+          mode.textContent = T('keypad_phone');
+        } else {
+          input.focus();
+          mode.textContent = T('keypad_screen');
+        }
+      });
+      wrap.appendChild(mode);
+      return { wrap: wrap, input: input };
+    }
+
     function instructionsBlock(value) {
       if (!value) return null;
       var wrap = h('div', 'instructions');
@@ -300,6 +428,75 @@ export function renderKeypadPage({ data }) {
     }
 
     /* ---------------- schermate ---------------- */
+
+    function guideTitleKey(id) { return 'guide_' + id + '_title'; }
+    function guideDefaultKey(id) { return 'guide_' + id + '_default'; }
+
+    function closeGuide() {
+      guideOpen = false;
+      guideIndex = 0;
+      try { window.sessionStorage.setItem('sc_arrival_guide_seen', '1'); } catch (error) { /* ignora */ }
+      status('');
+      render();
+    }
+
+    function guideReviewButton() {
+      if (!content || !content.arrival_guide || !content.arrival_guide.length) return null;
+      return actionButton(T('guide_review'), 'btn-guide', function () {
+        guideOpen = true;
+        guideIndex = 0;
+        status('');
+        render();
+      });
+    }
+
+    function renderGuide() {
+      var steps = content.arrival_guide || [];
+      if (!steps.length) return closeGuide();
+      if (guideIndex >= steps.length) guideIndex = steps.length - 1;
+      var step = steps[guideIndex];
+
+      area().className = 'guide-view';
+      title(T('guide_title'));
+      if (guideIndex === 0) area().appendChild(h('p', 'hint', T('guide_intro')));
+      area().appendChild(h('div', 'guide-progress', T('guide_step', {
+        current: guideIndex + 1,
+        total: steps.length
+      })));
+
+      var card = h('div', 'guide-card');
+      var image = document.createElement('img');
+      image.src = step.image;
+      image.alt = T(guideTitleKey(step.id));
+      card.appendChild(image);
+      var copy = h('div', 'guide-copy');
+      copy.appendChild(h('h2', null, T(guideTitleKey(step.id))));
+      copy.appendChild(h('p', null, text(step.note) || T(guideDefaultKey(step.id))));
+      if (step.id === 'key_box' && content.key_box_pin) {
+        var pin = h('div', 'key-box-code');
+        pin.appendChild(h('span', null, T('guide_key_box_pin')));
+        pin.appendChild(h('strong', null, content.key_box_pin));
+        copy.appendChild(pin);
+      }
+      card.appendChild(copy);
+      area().appendChild(card);
+
+      var nav = h('div', 'guide-nav');
+      var previous = actionButton(T('guide_previous'), 'btn-back', function () {
+        if (guideIndex > 0) { guideIndex--; render(); }
+      });
+      previous.disabled = guideIndex === 0;
+      nav.appendChild(previous);
+      if (guideIndex === steps.length - 1) {
+        nav.appendChild(actionButton(T('guide_finish'), 'btn-open', closeGuide));
+      } else {
+        nav.appendChild(actionButton(T('guide_next'), 'btn-open', function () {
+          guideIndex++;
+          render();
+        }));
+      }
+      area().appendChild(nav);
+    }
 
     function renderLangSwitch() {
       var container = document.getElementById('langSwitch');
@@ -368,8 +565,9 @@ export function renderKeypadPage({ data }) {
       area().className = 'locked';
       title(T('locked_title'));
       area().appendChild(h('p', 'hint', T('locked_hint')));
-      var input = pinField(T('pin_placeholder'));
-      area().appendChild(input);
+      var entry = accessPinEntry(T('pin_placeholder'));
+      var input = entry.input;
+      area().appendChild(entry.wrap);
       var submit = actionButton(T('locked_button'), null, function () {
         if (!input.value) return;
         submit.disabled = true;
@@ -378,22 +576,27 @@ export function renderKeypadPage({ data }) {
           if (result.success) {
             unlocked = true;
             content = result.content;
+            guideIndex = 0;
+            guideOpen = !!(content.arrival_guide && content.arrival_guide.length);
+            try { window.sessionStorage.removeItem('sc_arrival_guide_seen'); } catch (error) { /* ignora */ }
             status('');
             render();
             return;
           }
           status(result.msg, 'var(--danger)');
           input.value = '';
-          input.focus();
+          input.dispatchEvent(new Event('input', { bubbles: true }));
         }).catch(function () {
           status(T('connection_error'), 'var(--danger)');
-        }).then(function () { submit.disabled = false; });
+        }).then(function () { submit.disabled = false; syncSubmit(); });
       });
       area().appendChild(submit);
+      function syncSubmit() { submit.disabled = input.value.length < 4; }
+      input.addEventListener('input', syncSubmit);
       input.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') submit.click();
       });
-      input.focus();
+      syncSubmit();
     }
 
     function renderNoDoors() {
@@ -409,6 +612,8 @@ export function renderKeypadPage({ data }) {
 
     function renderMenu() {
       title(T('choose_title'));
+      var review = guideReviewButton();
+      if (review) area().appendChild(review);
       var general = instructionsBlock(text(content.instructions));
       if (general) area().appendChild(general);
       content.doors.forEach(function (door, index) {
@@ -428,6 +633,9 @@ export function renderKeypadPage({ data }) {
     function renderDoorScreen(index, canGoBack) {
       var door = content.doors[index];
       title(text(door.name));
+
+      var review = guideReviewButton();
+      if (review) area().appendChild(review);
 
       var doorInstructions = text(door.instructions) || (canGoBack ? '' : text(content.instructions));
       var block = instructionsBlock(doorInstructions);
@@ -474,6 +682,8 @@ export function renderKeypadPage({ data }) {
       document.getElementById('badge').textContent = T('badge');
       area().innerHTML = '';
       area().className = '';
+      var showingGuide = !!(unlocked && guideOpen && content && content.arrival_guide && content.arrival_guide.length);
+      document.querySelector('.box').classList.toggle('showing-guide', showingGuide);
 
       var emergency = document.getElementById('emergencySection');
       var emergencyContact = data.emergencyContact || (content && content.emergency_contact) || '';
@@ -487,6 +697,7 @@ export function renderKeypadPage({ data }) {
       }
 
       if (!unlocked) return renderLocked();
+      if (showingGuide) return renderGuide();
       if (!content.doors.length) return renderNoDoors();
       if (content.mode === 'sequence') return renderSequence();
       if (selected === null) return renderMenu();
