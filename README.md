@@ -9,7 +9,7 @@ Non è richiesta alcuna competenza di programmazione: ti basterà seguire le ist
 **In breve, il sistema offre:**
 - 🌍 sito per gli ospiti in **sei lingue**, con rilevamento della lingua del telefono;
 - 🔒 **PIN ospiti** da 4 a 6 cifre, inseribile anche da un grande tastierino a schermo;
-- 📷 **guida fotografica all'arrivo** con parcheggio, cancellini e cassetta delle chiavi;
+- 📷 **guida fotografica all'arrivo** con cancello carrale, parcheggio, cancellini e cassetta delle chiavi;
 - 📝 **istruzioni** personalizzabili, generali e per singolo ingresso;
 - 🚪 più porte sullo **stesso dispositivo Shelly**, per l'installazione con un solo pulsante che apre più cancelli.
 
@@ -199,7 +199,7 @@ La pagina `/setup/codice` permette di generare o inserire il PIN richiesto **pri
 > ⚠️ **Onestà sul livello di sicurezza:** è un deterrente paragonabile al codice di una cassetta portachiavi, non una password robusta. I tentativi errati vengono rallentati, ma il PIN va comunque cambiato fra un ospite e l'altro.
 
 ### 📷 Guida fotografica all'arrivo
-Nella sezione *Guida fotografica all'arrivo* di `/setup` ci sono quattro slot fissi: parcheggio, cancellino esterno, cancellino interno e cassetta delle chiavi. Le foto vengono ridimensionate nel browser e salvate nel KV insieme alla configurazione, quindi sostituirle non richiede un deploy. Dopo il PIN l'ospite vede una sola fotografia per volta, con pulsanti grandi *Avanti* e *Indietro*; alla fine raggiunge i comandi di apertura.
+Nella sezione *Guida fotografica all'arrivo* di `/setup` ci sono cinque slot fissi: cancello automatico carrale, parcheggio, cancellino esterno, cancellino interno e cassetta delle chiavi. Le foto vengono ridimensionate nel browser e salvate nel KV insieme alla configurazione, quindi sostituirle non richiede un deploy. Dopo il PIN l'ospite sceglie se visualizzare la guida o raggiungere subito i comandi di apertura. Nella guida vede una sola fotografia per volta, con pulsanti grandi *Avanti* e *Indietro*.
 
 La pagina `/setup/codice` genera anche un messaggio ospite nelle sei lingue, pronto da copiare o condividere. Il messaggio contiene un solo link e un solo PIN: fotografie e istruzioni rimangono nella guida protetta.
 
@@ -238,11 +238,11 @@ Il dispositivo è sempre lo stesso: quello che cambia è **da quale citofono hai
    - Istruzioni: *"Una volta dentro, suona dal pulsante del portone e premi di nuovo Apri ora."*
 5. Usa **↑ ↓** per verificare che l'ordine rispecchi il percorso reale, poi **Salva configurazione**.
 
-L'ospite vedrà una schermata alla volta, con scritto esattamente cosa fare prima di premere. Ripetere lo stesso Device ID è del tuto legittimo: la validazione non lo segnala come errore.
+L'ospite vedrà una schermata alla volta, con scritto esattamente cosa fare prima di premere. Ripetere lo stesso Device ID è del tutto legittimo: la validazione non lo segnala come errore.
 
 ---
 
-## 10. Utilizzo Quotidianno
+## 10. Utilizzo Quotidiano
 
 Il tuo sistema è pronto!
 

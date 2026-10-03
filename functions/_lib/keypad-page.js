@@ -112,6 +112,13 @@ const KEYPAD_STYLES = `
   .key-box-code strong { display: block; margin-top: 0.25rem; font-size: 1.7rem; letter-spacing: 0.22rem; color: #183d2d; }
   .guide-nav { display: grid; grid-template-columns: 1fr 1.35fr; gap: 0.65rem; }
   .guide-nav .action { margin-bottom: 0; }
+  .route-choice-view .hint { margin-bottom: 1.35rem; }
+  .route-choice-actions {
+    display: grid; gap: 0.9rem; padding: 0.2rem 0 0.3rem;
+  }
+  .route-choice-actions .action {
+    min-height: 72px; margin-bottom: 0; font-size: 1.12rem;
+  }
   button.action {
     width: 100%; min-height: 62px; padding: 0.95rem 1rem;
     font-size: 1.1rem; line-height: 1.25; font-weight: 800; color: #fff;
@@ -184,6 +191,10 @@ const KEYPAD_STYLES = `
     .box.showing-guide h1 { font-size: 1.45rem; margin: 0.2rem 0 0.65rem; }
     .box.showing-guide .hint { font-size: 0.95rem; line-height: 1.4; margin-bottom: 0.55rem; }
     .box.showing-guide .guide-card img { max-height: 31vh; }
+    .box.showing-choice { padding-top: 5.5rem; }
+    .box.showing-choice .logo { max-width: 175px; margin-bottom: 1rem; }
+    .box.showing-choice h1 { margin-bottom: 0.9rem; }
+    .box.showing-choice .route-choice-actions .action { min-height: 74px; }
     .emergency {
       position: absolute; top: 0.75rem; left: 0.75rem; bottom: auto; transform: none;
       width: auto; max-width: calc(100% - 8.25rem);
@@ -237,6 +248,13 @@ const KEYPAD_STYLES = `
     .box.showing-guide .guide-card { padding: 0.5rem; margin-bottom: 0.45rem; }
     .box.showing-guide .guide-card img { max-height: 30vh; }
     .box.showing-guide .guide-nav .action { min-height: 48px; padding-block: 0.5rem; }
+    .box.showing-choice { padding-top: 2.65rem; }
+    .box.showing-choice .logo { max-width: 76px; margin-bottom: 0.2rem; }
+    .box.showing-choice .badge { display: none; }
+    .box.showing-choice h1 { margin: 0 0 0.25rem; font-size: 1.25rem; }
+    .box.showing-choice .hint { margin-bottom: 0.45rem; }
+    .box.showing-choice .route-choice-actions { grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+    .box.showing-choice .route-choice-actions .action { min-height: 56px; padding: 0.55rem; }
     #statusMessage { margin-top: 0.45rem; min-height: 22px; font-size: 0.9rem; }
     .lang-switch { top: 0.65rem; right: 0.75rem; }
     .lang-menu {
@@ -284,11 +302,7 @@ export function renderKeypadPage({ data }) {
     var currentStep = 0;
     var guideIndex = 0;
     var guideOpen = false;
-
-    if (unlocked && content && content.arrival_guide && content.arrival_guide.length) {
-      try { guideOpen = window.sessionStorage.getItem('sc_arrival_guide_seen') !== '1'; }
-      catch (error) { guideOpen = true; }
-    }
+    var routeChoiceOpen = !!(unlocked && content && content.arrival_guide && content.arrival_guide.length);
 
     try {
       var saved = window.localStorage.getItem('sc_lang');
@@ -434,8 +448,8 @@ export function renderKeypadPage({ data }) {
 
     function closeGuide() {
       guideOpen = false;
+      routeChoiceOpen = false;
       guideIndex = 0;
-      try { window.sessionStorage.setItem('sc_arrival_guide_seen', '1'); } catch (error) { /* ignora */ }
       status('');
       render();
     }
@@ -443,11 +457,34 @@ export function renderKeypadPage({ data }) {
     function guideReviewButton() {
       if (!content || !content.arrival_guide || !content.arrival_guide.length) return null;
       return actionButton(T('guide_review'), 'btn-guide', function () {
+        routeChoiceOpen = false;
         guideOpen = true;
         guideIndex = 0;
         status('');
         render();
       });
+    }
+
+    function renderRouteChoice() {
+      area().className = 'route-choice-view';
+      title(T('guide_choice_title'));
+      area().appendChild(h('p', 'hint', T('guide_choice_intro')));
+
+      var actions = h('div', 'route-choice-actions');
+      actions.appendChild(actionButton(T('guide_choice_view'), 'btn-choice', function () {
+        routeChoiceOpen = false;
+        guideOpen = true;
+        guideIndex = 0;
+        status('');
+        render();
+      }));
+      actions.appendChild(actionButton(T('guide_choice_skip'), 'btn-open', function () {
+        routeChoiceOpen = false;
+        guideOpen = false;
+        status('');
+        render();
+      }));
+      area().appendChild(actions);
     }
 
     function renderGuide() {
@@ -577,8 +614,8 @@ export function renderKeypadPage({ data }) {
             unlocked = true;
             content = result.content;
             guideIndex = 0;
-            guideOpen = !!(content.arrival_guide && content.arrival_guide.length);
-            try { window.sessionStorage.removeItem('sc_arrival_guide_seen'); } catch (error) { /* ignora */ }
+            guideOpen = false;
+            routeChoiceOpen = !!(content.arrival_guide && content.arrival_guide.length);
             status('');
             render();
             return;
@@ -682,8 +719,11 @@ export function renderKeypadPage({ data }) {
       document.getElementById('badge').textContent = T('badge');
       area().innerHTML = '';
       area().className = '';
+      var showingChoice = !!(unlocked && routeChoiceOpen && content && content.arrival_guide && content.arrival_guide.length);
       var showingGuide = !!(unlocked && guideOpen && content && content.arrival_guide && content.arrival_guide.length);
-      document.querySelector('.box').classList.toggle('showing-guide', showingGuide);
+      var box = document.querySelector('.box');
+      box.classList.toggle('showing-choice', showingChoice);
+      box.classList.toggle('showing-guide', showingGuide);
 
       var emergency = document.getElementById('emergencySection');
       var emergencyContact = data.emergencyContact || (content && content.emergency_contact) || '';
@@ -697,6 +737,7 @@ export function renderKeypadPage({ data }) {
       }
 
       if (!unlocked) return renderLocked();
+      if (showingChoice) return renderRouteChoice();
       if (showingGuide) return renderGuide();
       if (!content.doors.length) return renderNoDoors();
       if (content.mode === 'sequence') return renderSequence();

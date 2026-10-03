@@ -9,6 +9,7 @@ import { BASE_STYLES, escapeHtml, jsonForScript } from "./html.js";
 import { LANGUAGES, LANGUAGE_LABELS, LANGUAGE_FLAGS } from "./i18n.js";
 
 const GUIDE_META = [
+  { id: "vehicle_gate", icon: "🚗", title: "Cancello automatico carrale", placeholder: "Es. Questo è il cancello automatico carrale per l’ingresso delle auto." },
   { id: "parking", icon: "🅿️", title: "Dove parcheggiare", placeholder: "Es. Parcheggia nello spazio sulla destra, davanti alla siepe." },
   { id: "outer_gate", icon: "🚶", title: "Cancellino esterno", placeholder: "Es. Il cancellino si trova accanto al cancello carrabile." },
   { id: "inner_gate", icon: "🏡", title: "Cancellino interno", placeholder: "Es. Dopo il vialetto trovi il secondo cancellino sulla sinistra." },
